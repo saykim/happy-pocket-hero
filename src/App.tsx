@@ -10,6 +10,7 @@ import AllowanceTracker from "./components/AllowanceTracker";
 import GoalTracker from "./components/GoalTracker";
 import TaskList from "./components/TaskList";
 import Navbar from "./components/Navbar";
+import { UserProvider } from "./context/UserContext";
 
 // Create custom page components for each route
 const AllowancePage = () => (
@@ -66,20 +67,22 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/allowance" element={<AllowancePage />} />
-          <Route path="/goals" element={<GoalsPage />} />
-          <Route path="/tasks" element={<TasksPage />} />
-          <Route path="/badges" element={<BadgesPage />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <UserProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/allowance" element={<AllowancePage />} />
+            <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/tasks" element={<TasksPage />} />
+            <Route path="/badges" element={<BadgesPage />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </UserProvider>
   </QueryClientProvider>
 );
 
