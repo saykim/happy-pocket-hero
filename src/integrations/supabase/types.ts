@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      badges: {
+        Row: {
+          category: string
+          created_at: string
+          description: string
+          icon: string
+          id: string
+          name: string
+          required_count: number
+          requirement: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description: string
+          icon: string
+          id?: string
+          name: string
+          required_count?: number
+          requirement: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string
+          icon?: string
+          id?: string
+          name?: string
+          required_count?: number
+          requirement?: string
+        }
+        Relationships: []
+      }
       goals: {
         Row: {
           created_at: string
@@ -125,6 +158,48 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_badges: {
+        Row: {
+          badge_id: string
+          completed: boolean
+          earned_at: string
+          id: string
+          progress: number
+          user_id: string
+        }
+        Insert: {
+          badge_id: string
+          completed?: boolean
+          earned_at?: string
+          id?: string
+          progress?: number
+          user_id: string
+        }
+        Update: {
+          badge_id?: string
+          completed?: boolean
+          earned_at?: string
+          id?: string
+          progress?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "badges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_badges_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"

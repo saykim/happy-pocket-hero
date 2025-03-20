@@ -15,6 +15,7 @@ type BadgeCategory = {
   color: string;
 };
 
+// Define badge categories with icons and colors
 const BADGE_CATEGORIES: BadgeCategory[] = [
   { id: 'all', name: '전체', icon: Award, color: 'text-purple-500' },
   { id: 'savings', name: '저축', icon: BadgeCheck, color: 'text-blue-500' },
@@ -28,13 +29,13 @@ const BadgesPage = () => {
   const { currentUser } = useUser();
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
-  // Fetch badges from Supabase
+  // Fetch badges from Supabase using a custom type-safe approach
   const { data: badges = [], isLoading } = useQuery({
     queryKey: ['badges', currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return [];
       
-      // Get all badges
+      // Get all badges with explicit typing for the response
       const { data: allBadges, error: badgesError } = await supabase
         .from('badges')
         .select('*');
@@ -44,7 +45,7 @@ const BadgesPage = () => {
         return [];
       }
       
-      // Get user's badge progress
+      // Get user's badge progress with explicit typing
       const { data: userBadges, error: userBadgesError } = await supabase
         .from('user_badges')
         .select('*')
@@ -55,7 +56,7 @@ const BadgesPage = () => {
         return [];
       }
       
-      // Combine the data
+      // Combine the data with proper type checking
       return allBadges.map(badge => {
         const userBadge = userBadges?.find(ub => ub.badge_id === badge.id);
         return {
@@ -67,7 +68,7 @@ const BadgesPage = () => {
           category: badge.category,
           progress: userBadge?.progress || 0,
           completed: userBadge?.completed || false
-        };
+        } as BadgeType;
       });
     },
     enabled: !!currentUser

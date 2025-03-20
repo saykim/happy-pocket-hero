@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -9,7 +8,7 @@ import NotFound from "./pages/NotFound";
 import AllowanceTracker from "./components/AllowanceTracker";
 import GoalTracker from "./components/GoalTracker";
 import TaskList from "./components/TaskList";
-import BadgesView from "./components/BadgesPage";
+import BadgesPage from "./components/BadgesPage";
 import Navbar from "./components/Navbar";
 import { UserProvider } from "./context/UserContext";
 
@@ -42,11 +41,11 @@ const TasksPage = () => (
 );
 
 // Badge page component
-const BadgesPage = () => (
+const BadgesPageRoute = () => (
   <div className="min-h-screen pb-24 md:pb-0 md:pt-20">
     <Navbar />
     <div className="container max-w-4xl px-4 py-8">
-      <BadgesView />
+      <BadgesPage />
     </div>
   </div>
 );
@@ -65,7 +64,7 @@ const App = () => (
             <Route path="/allowance" element={<AllowancePage />} />
             <Route path="/goals" element={<GoalsPage />} />
             <Route path="/tasks" element={<TasksPage />} />
-            <Route path="/badges" element={<BadgesPage />} />
+            <Route path="/badges" element={<BadgesPageRoute />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
