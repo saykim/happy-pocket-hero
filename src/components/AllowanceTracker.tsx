@@ -1,73 +1,136 @@
 
-import { useState } from "react";
-import { PlusCircle, MinusCircle, CalendarIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { PlusCircle, MinusCircle, CalendarIcon, Wallet, Coins } from "lucide-react";
 import AnimatedNumber from "./ui/AnimatedNumber";
 import CategoryIcon, { CategoryType } from "./CategoryIcon";
 import { cn } from "@/lib/utils";
+import { Button } from "./ui/button";
+import { supabase } from "@/integrations/supabase/client";
+import { useUser } from "@/context/UserContext";
 
-// A mock transaction for the initial state
-const initialTransactions = [
-  {
-    id: "1",
-    type: "income",
-    amount: 10000,
-    category: "용돈" as CategoryType,
-    description: "주간 용돈",
-    date: new Date(Date.now() - 86400000 * 2).toISOString(), // 2 days ago
-  },
-  {
-    id: "2",
-    type: "expense",
-    amount: 3000,
-    category: "간식" as CategoryType,
-    description: "아이스크림",
-    date: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-  },
-  {
-    id: "3",
-    type: "expense",
-    amount: 2000,
-    category: "교통" as CategoryType,
-    description: "버스비",
-    date: new Date().toISOString(),
-  },
-];
+// Types for our transactions
+type Transaction = {
+  id: string;
+  type: "income" | "expense";
+  amount: number;
+  category: CategoryType;
+  description: string;
+  date: string;
+};
 
 const AllowanceTracker = () => {
+  const { currentUser } = useUser();
   const [balance, setBalance] = useState(5000);
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [transactionType, setTransactionType] = useState<"income" | "expense">("income");
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(0);
   const [category, setCategory] = useState<CategoryType>("용돈");
   const [description, setDescription] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleAddTransaction = (e: React.FormEvent) => {
+  // Predefined amounts for quick selection
+  const presetAmounts = [
+    { value: 100, label: "100원" },
+    { value: 500, label: "500원" },
+    { value: 1000, label: "1천원" },
+    { value: 5000, label: "5천원" },
+    { value: 10000, label: "1만원" },
+  ];
+
+  // Fetch transactions on component mount or when user changes
+  useEffect(() => {
+    if (currentUser) {
+      fetchTransactions();
+    }
+  }, [currentUser]);
+
+  const fetchTransactions = async () => {
+    if (!currentUser) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('date', { ascending: false });
+      
+      if (error) {
+        console.error("Error fetching transactions:", error);
+        return;
+      }
+      
+      setTransactions(data || []);
+      
+      // Calculate balance from transactions
+      const totalIncome = (data || [])
+        .filter(t => t.type === 'income')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      const totalExpense = (data || [])
+        .filter(t => t.type === 'expense')
+        .reduce((sum, t) => sum + t.amount, 0);
+      
+      setBalance(totalIncome - totalExpense);
+    } catch (error) {
+      console.error("Failed to fetch transactions:", error);
+    }
+  };
+
+  const addAmountValue = (value: number) => {
+    setAmount(prev => prev + value);
+  };
+
+  const resetAmount = () => {
+    setAmount(0);
+  };
+
+  const handleAddTransaction = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!amount || parseInt(amount) <= 0) return;
+    if (!amount || amount <= 0 || !currentUser) return;
+    
+    setIsLoading(true);
     
     const newTransaction = {
-      id: Date.now().toString(),
+      user_id: currentUser.id,
       type: transactionType,
-      amount: parseInt(amount),
+      amount: amount,
       category,
       description,
       date: new Date().toISOString(),
     };
     
-    setTransactions([newTransaction, ...transactions]);
-    
-    if (transactionType === "income") {
-      setBalance((prev) => prev + parseInt(amount));
-    } else {
-      setBalance((prev) => prev - parseInt(amount));
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .insert([newTransaction])
+        .select();
+      
+      if (error) {
+        console.error("Error saving transaction:", error);
+        return;
+      }
+      
+      // Update local state
+      if (data && data.length > 0) {
+        setTransactions([data[0], ...transactions]);
+        
+        if (transactionType === "income") {
+          setBalance(prev => prev + amount);
+        } else {
+          setBalance(prev => prev - amount);
+        }
+      }
+    } catch (error) {
+      console.error("Failed to save transaction:", error);
+    } finally {
+      // Reset form
+      setAmount(0);
+      setDescription("");
+      setShowAddForm(false);
+      setIsLoading(false);
     }
-    
-    // Reset form
-    setAmount("");
-    setDescription("");
-    setShowAddForm(false);
   };
 
   return (
@@ -80,6 +143,7 @@ const AllowanceTracker = () => {
             <button 
               onClick={() => {
                 setTransactionType("income");
+                resetAmount();
                 setShowAddForm(true);
               }}
               className="bg-candy-green text-green-700 p-1.5 rounded-full hover:bg-green-200 transition-colors"
@@ -89,6 +153,7 @@ const AllowanceTracker = () => {
             <button 
               onClick={() => {
                 setTransactionType("expense");
+                resetAmount();
                 setShowAddForm(true);
               }}
               className="bg-candy-pink text-red-500 p-1.5 rounded-full hover:bg-red-200 transition-colors"
@@ -111,26 +176,55 @@ const AllowanceTracker = () => {
       {/* Add Transaction Form */}
       {showAddForm && (
         <div className="candy-card animate-scale-up">
-          <h3 className="text-lg font-semibold mb-4">
-            {transactionType === "income" ? "돈 받기" : "돈 쓰기"}
+          <h3 className="text-lg font-semibold mb-4 flex items-center">
+            {transactionType === "income" 
+              ? <><Wallet className="mr-2 text-green-600" size={20} /> 돈 받기</>
+              : <><Coins className="mr-2 text-red-500" size={20} /> 돈 쓰기</>}
           </h3>
           
-          <form onSubmit={handleAddTransaction} className="space-y-4">
+          <form onSubmit={handleAddTransaction} className="space-y-5">
+            {/* Amount display */}
+            <div className="bg-gray-100 p-3 rounded-lg text-center">
+              <p className="text-sm text-gray-500 mb-1">
+                {transactionType === "income" ? "받을 금액" : "쓸 금액"}
+              </p>
+              <div className={cn(
+                "text-3xl font-bold",
+                transactionType === "income" ? "text-green-600" : "text-red-600"
+              )}>
+                {amount.toLocaleString()}원
+              </div>
+              {amount > 0 && (
+                <button 
+                  type="button" 
+                  onClick={resetAmount}
+                  className="mt-1 text-xs text-gray-500 hover:text-gray-700"
+                >
+                  초기화
+                </button>
+              )}
+            </div>
+            
+            {/* Amount buttons */}
             <div>
-              <label htmlFor="amount" className="block mb-1 text-sm font-medium text-gray-700">
-                {transactionType === "income" ? "받은 금액" : "쓴 금액"}
-              </label>
-              <div className="relative">
-                <input
-                  id="amount"
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="0"
-                  className="candy-input w-full pl-7"
-                  required
-                />
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₩</span>
+              <div className="grid grid-cols-3 gap-2">
+                {presetAmounts.map((preset) => (
+                  <button
+                    key={preset.value}
+                    type="button"
+                    onClick={() => addAmountValue(preset.value)}
+                    className={cn(
+                      "p-3 rounded-xl text-center transition-all border-2",
+                      "flex flex-col items-center justify-center",
+                      transactionType === "income"
+                        ? "border-green-200 bg-green-50 hover:bg-green-100"
+                        : "border-red-200 bg-red-50 hover:bg-red-100"
+                    )}
+                  >
+                    <span className="text-xl font-semibold">{preset.value.toLocaleString()}</span>
+                    <span className="text-xs text-gray-500">원</span>
+                  </button>
+                ))}
               </div>
             </div>
             
@@ -166,30 +260,33 @@ const AllowanceTracker = () => {
                 type="text"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="무엇에 썼나요?"
+                placeholder={transactionType === "income" ? "누구한테 받았나요?" : "무엇에 썼나요?"}
                 className="candy-input w-full"
               />
             </div>
             
             <div className="flex space-x-3">
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => setShowAddForm(false)}
-                className="candy-button flex-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
+                className="flex-1"
+                disabled={isLoading}
               >
                 취소
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
                 className={cn(
-                  "candy-button flex-1",
+                  "flex-1",
                   transactionType === "income" 
-                    ? "bg-green-500 hover:bg-green-600" 
-                    : "bg-pink-500 hover:bg-pink-600"
+                    ? "bg-green-500 hover:bg-green-600 text-white" 
+                    : "bg-pink-500 hover:bg-pink-600 text-white"
                 )}
+                disabled={amount <= 0 || isLoading}
               >
-                저장하기
-              </button>
+                {isLoading ? "저장 중..." : transactionType === "income" ? "받기" : "쓰기"}
+              </Button>
             </div>
           </form>
         </div>
@@ -215,7 +312,7 @@ const AllowanceTracker = () => {
                 )}
               >
                 <div className="flex items-center space-x-3">
-                  <CategoryIcon category={transaction.category} />
+                  <CategoryIcon category={transaction.category as CategoryType} />
                   <div>
                     <p className="font-medium">{transaction.description || transaction.category}</p>
                     <div className="flex items-center text-xs text-gray-500">
