@@ -60,7 +60,17 @@ const AllowanceTracker = () => {
         return;
       }
       
-      setTransactions(data || []);
+      // Type cast the data to ensure it matches our Transaction type
+      const typedTransactions: Transaction[] = (data || []).map(item => ({
+        id: item.id,
+        type: item.type as "income" | "expense", // Cast the string to our union type
+        amount: item.amount,
+        category: item.category as CategoryType,
+        description: item.description || "",
+        date: item.date
+      }));
+      
+      setTransactions(typedTransactions);
       
       // Calculate balance from transactions
       const totalIncome = (data || [])
@@ -114,7 +124,17 @@ const AllowanceTracker = () => {
       
       // Update local state
       if (data && data.length > 0) {
-        setTransactions([data[0], ...transactions]);
+        // Convert the returned data to match our Transaction type
+        const newTypedTransaction: Transaction = {
+          id: data[0].id,
+          type: data[0].type as "income" | "expense",
+          amount: data[0].amount,
+          category: data[0].category as CategoryType,
+          description: data[0].description || "",
+          date: data[0].date
+        };
+        
+        setTransactions([newTypedTransaction, ...transactions]);
         
         if (transactionType === "income") {
           setBalance(prev => prev + amount);
