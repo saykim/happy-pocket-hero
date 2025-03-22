@@ -3,9 +3,22 @@ import Navbar from "@/components/Navbar";
 import Dashboard from "@/components/Dashboard";
 import { useUser } from "@/context/UserContext";
 import UserSelector from "@/components/UserSelector";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 const Index = () => {
-  const { isLoading } = useUser();
+  const { isLoading, currentUser } = useUser();
+  const { toast } = useToast();
+  
+  useEffect(() => {
+    if (!isLoading && !currentUser) {
+      toast({
+        title: "유저를 선택해 주세요",
+        description: "데이터를 보려면 유저를 선택해 주세요.",
+        variant: "default",
+      });
+    }
+  }, [isLoading, currentUser, toast]);
 
   if (isLoading) {
     return (

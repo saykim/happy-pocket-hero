@@ -5,6 +5,10 @@ import { Link } from 'react-router-dom';
 import MascotGuide from './MascotGuide';
 import AnimatedNumber from './ui/AnimatedNumber';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import { useUser } from '@/context/UserContext';
+import { useToast } from '@/hooks/use-toast';
 
 type DashboardStat = {
   id: string;
@@ -17,14 +21,26 @@ type DashboardStat = {
   suffix: string;
 };
 
+type Transaction = {
+  id: string;
+  amount: number;
+  category: string;
+  type: string;
+  description: string | null;
+  date: string;
+  created_at: string;
+};
+
 const Dashboard = () => {
   const [greeting, setGreeting] = useState('안녕하세요!');
+  const { currentUser } = useUser();
+  const { toast } = useToast();
   const [stats, setStats] = useState<DashboardStat[]>([
     {
       id: 'balance',
       title: '현재 잔액',
-      value: 5000,
-      change: 10,
+      value: 0,
+      change: 0,
       icon: HandCoins,
       iconColor: 'text-blue-600',
       bgColor: 'bg-blue-100',
@@ -33,8 +49,8 @@ const Dashboard = () => {
     {
       id: 'savings',
       title: '저축액',
-      value: 55000,
-      change: 22,
+      value: 0,
+      change: 0,
       icon: PiggyBank,
       iconColor: 'text-purple-600',
       bgColor: 'bg-purple-100',
@@ -43,8 +59,8 @@ const Dashboard = () => {
     {
       id: 'tasks',
       title: '미완료 할일',
-      value: 2,
-      change: -1,
+      value: 0,
+      change: 0,
       icon: ListTodo,
       iconColor: 'text-amber-600',
       bgColor: 'bg-amber-100',
@@ -53,14 +69,150 @@ const Dashboard = () => {
     {
       id: 'points',
       title: '포인트',
-      value: 30,
-      change: 30,
+      value: 0,
+      change: 0,
       icon: Target,
       iconColor: 'text-pink-600',
       bgColor: 'bg-pink-100',
       suffix: '점',
     },
   ]);
+
+  // Fetch transactions data
+  const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
+    queryKey: ['transactions', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('date', { ascending: false })
+        .limit(10);
+      
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        toast({
+          title: '데이터 로딩 실패',
+          description: '거래 내역을 가져오는데 실패했습니다.',
+          variant: 'destructive',
+        });
+        return [];
+      }
+      
+      return data as Transaction[];
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  // Fetch tasks data
+  const { data: tasksCount } = useQuery({
+    queryKey: ['tasksCount', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return 0;
+      
+      const { count, error } = await supabase
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', currentUser.id)
+        .eq('status', 'todo');
+      
+      if (error) {
+        console.error('Error fetching tasks count:', error);
+        return 0;
+      }
+      
+      return count || 0;
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  // Fetch goals data for savings
+  const { data: goalsSavings } = useQuery({
+    queryKey: ['goalsSavings', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser?.id) return 0;
+      
+      const { data, error } = await supabase
+        .from('goals')
+        .select('current_amount')
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+        console.error('Error fetching goals savings:', error);
+        return 0;
+      }
+      
+      // Sum up all current_amount values
+      return data.reduce((sum, goal) => sum + goal.current_amount, 0);
+    },
+    enabled: !!currentUser?.id,
+  });
+
+  // Calculate balance from transactions
+  const calculateBalance = (transactions: Transaction[] = []) => {
+    return transactions.reduce((balance, transaction) => {
+      if (transaction.type === 'income') {
+        return balance + transaction.amount;
+      } else {
+        return balance - transaction.amount;
+      }
+    }, 0);
+  };
+
+  // Update stats when data loads
+  useEffect(() => {
+    if (currentUser?.id) {
+      const balance = calculateBalance(transactions);
+      const savings = goalsSavings || 0;
+      const incompleteTasks = tasksCount || 0;
+      const points = 0; // TODO: Implement points from badges or achievements
+      
+      setStats([
+        {
+          id: 'balance',
+          title: '현재 잔액',
+          value: balance,
+          change: 0, // Calculate change percentage if historical data available
+          icon: HandCoins,
+          iconColor: 'text-blue-600',
+          bgColor: 'bg-blue-100',
+          suffix: '원',
+        },
+        {
+          id: 'savings',
+          title: '저축액',
+          value: savings,
+          change: 0, // Calculate change percentage if historical data available
+          icon: PiggyBank,
+          iconColor: 'text-purple-600',
+          bgColor: 'bg-purple-100',
+          suffix: '원',
+        },
+        {
+          id: 'tasks',
+          title: '미완료 할일',
+          value: incompleteTasks,
+          change: 0, // Calculate change percentage if historical data available
+          icon: ListTodo,
+          iconColor: 'text-amber-600',
+          bgColor: 'bg-amber-100',
+          suffix: '개',
+        },
+        {
+          id: 'points',
+          title: '포인트',
+          value: points,
+          change: 0, // Calculate change percentage if historical data available
+          icon: Target,
+          iconColor: 'text-pink-600',
+          bgColor: 'bg-pink-100',
+          suffix: '점',
+        },
+      ]);
+    }
+  }, [currentUser?.id, transactions, tasksCount, goalsSavings]);
 
   // Update greeting based on time of day
   useEffect(() => {
@@ -86,7 +238,10 @@ const Dashboard = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">{greeting}</h1>
-          <p className="text-gray-500 mt-1">오늘도 용돈을 관리해 볼까요?</p>
+          <p className="text-gray-500 mt-1">
+            {currentUser?.nickname ? `${currentUser.nickname}님, ` : ''}
+            오늘도 용돈을 관리해 볼까요?
+          </p>
         </div>
         <MascotGuide message="목표를 달성하면 포인트를 얻을 수 있어요!" />
       </div>
@@ -169,46 +324,58 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-3">
-          {[
-            { title: '주간 용돈', amount: '10,000원', type: 'income', time: '2일 전' },
-            { title: '아이스크림', amount: '3,000원', type: 'expense', time: '어제' },
-            { title: '버스비', amount: '2,000원', type: 'expense', time: '오늘' },
-          ].map((activity, index) => (
-            <div 
-              key={index}
-              className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
-            >
-              <div className="flex items-center">
-                <div 
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                    activity.type === 'income' ? 'bg-green-100' : 'bg-red-100'
-                  )}
-                >
-                  <span 
+          {isLoadingTransactions ? (
+            <div className="py-6 text-center">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-500">데이터 로딩 중...</p>
+            </div>
+          ) : transactions && transactions.length > 0 ? (
+            transactions.slice(0, 3).map((transaction) => (
+              <div 
+                key={transaction.id}
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+              >
+                <div className="flex items-center">
+                  <div 
                     className={cn(
-                      "text-lg font-bold",
-                      activity.type === 'income' ? 'text-green-600' : 'text-red-500'
+                      "w-8 h-8 rounded-full flex items-center justify-center mr-3",
+                      transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
                     )}
                   >
-                    {activity.type === 'income' ? '+' : '-'}
-                  </span>
+                    <span 
+                      className={cn(
+                        "text-lg font-bold",
+                        transaction.type === 'income' ? 'text-green-600' : 'text-red-500'
+                      )}
+                    >
+                      {transaction.type === 'income' ? '+' : '-'}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-medium">{transaction.description || transaction.category}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(transaction.date).toLocaleDateString('ko-KR', {
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium">{activity.title}</p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
-                </div>
+                <span 
+                  className={cn(
+                    "font-semibold",
+                    transaction.type === 'income' ? 'text-green-600' : 'text-red-500'
+                  )}
+                >
+                  {transaction.amount.toLocaleString()}원
+                </span>
               </div>
-              <span 
-                className={cn(
-                  "font-semibold",
-                  activity.type === 'income' ? 'text-green-600' : 'text-red-500'
-                )}
-              >
-                {activity.amount}
-              </span>
+            ))
+          ) : (
+            <div className="py-6 text-center">
+              <p className="text-sm text-gray-500">최근 거래 내역이 없습니다.</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
