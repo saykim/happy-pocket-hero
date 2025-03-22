@@ -6,12 +6,13 @@ type Theme = "light" | "dark";
 type ThemeContextType = {
   theme: Theme;
   toggleTheme: () => void;
+  setTheme: (theme: Theme) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
-  const [theme, setTheme] = useState<Theme>(() => {
+  const [theme, setThemeState] = useState<Theme>(() => {
     // Check if theme is stored in localStorage
     const savedTheme = localStorage.getItem("theme") as Theme;
     // Check system preference if no saved theme
@@ -34,11 +35,15 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === "light" ? "dark" : "light"));
+    setThemeState(prevTheme => (prevTheme === "light" ? "dark" : "light"));
+  };
+
+  const setTheme = (newTheme: Theme) => {
+    setThemeState(newTheme);
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );

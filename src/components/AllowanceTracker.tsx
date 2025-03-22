@@ -156,9 +156,9 @@ const AllowanceTracker = () => {
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Balance Card */}
-      <div className="candy-card bg-gradient-to-br from-candy-blue to-candy-purple overflow-hidden">
+      <div className="candy-card bg-gradient-to-br from-candy-blue to-candy-purple overflow-hidden dark:from-blue-900 dark:to-purple-900 dark:text-white">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-gray-700 font-semibold">현재 잔액</h3>
+          <h3 className="text-gray-700 font-semibold dark:text-gray-200">현재 잔액</h3>
           <div className="flex space-x-2">
             <button 
               onClick={() => {
@@ -166,7 +166,7 @@ const AllowanceTracker = () => {
                 resetAmount();
                 setShowAddForm(true);
               }}
-              className="bg-candy-green text-green-700 p-1.5 rounded-full hover:bg-green-200 transition-colors"
+              className="bg-candy-green text-green-700 p-1.5 rounded-full hover:bg-green-200 transition-colors dark:bg-green-800 dark:text-green-200 dark:hover:bg-green-700"
             >
               <PlusCircle size={20} />
             </button>
@@ -176,7 +176,7 @@ const AllowanceTracker = () => {
                 resetAmount();
                 setShowAddForm(true);
               }}
-              className="bg-candy-pink text-red-500 p-1.5 rounded-full hover:bg-red-200 transition-colors"
+              className="bg-candy-pink text-red-500 p-1.5 rounded-full hover:bg-red-200 transition-colors dark:bg-red-900 dark:text-red-200 dark:hover:bg-red-800"
             >
               <MinusCircle size={20} />
             </button>
@@ -188,7 +188,7 @@ const AllowanceTracker = () => {
             value={balance} 
             suffix="원" 
             formatOptions={{ style: 'decimal', minimumFractionDigits: 0 }}
-            className="text-4xl font-bold text-blue-900"
+            className="text-4xl font-bold text-blue-900 dark:text-blue-100"
           />
         </div>
       </div>
@@ -198,19 +198,21 @@ const AllowanceTracker = () => {
         <div className="candy-card animate-scale-up">
           <h3 className="text-lg font-semibold mb-4 flex items-center">
             {transactionType === "income" 
-              ? <><Wallet className="mr-2 text-green-600" size={20} /> 돈 받기</>
-              : <><Coins className="mr-2 text-red-500" size={20} /> 돈 쓰기</>}
+              ? <><Wallet className="mr-2 text-green-600 dark:text-green-400" size={20} /> 돈 받기</>
+              : <><Coins className="mr-2 text-red-500 dark:text-red-400" size={20} /> 돈 쓰기</>}
           </h3>
           
           <form onSubmit={handleAddTransaction} className="space-y-5">
             {/* Amount display */}
-            <div className="bg-gray-100 p-3 rounded-lg text-center">
-              <p className="text-sm text-gray-500 mb-1">
+            <div className="bg-gray-100 p-3 rounded-lg text-center dark:bg-gray-700">
+              <p className="text-sm text-gray-500 mb-1 dark:text-gray-300">
                 {transactionType === "income" ? "받을 금액" : "쓸 금액"}
               </p>
               <div className={cn(
                 "text-3xl font-bold",
-                transactionType === "income" ? "text-green-600" : "text-red-600"
+                transactionType === "income" 
+                  ? "text-green-600 dark:text-green-400" 
+                  : "text-red-600 dark:text-red-400"
               )}>
                 {amount.toLocaleString()}원
               </div>
@@ -218,7 +220,7 @@ const AllowanceTracker = () => {
                 <button 
                   type="button" 
                   onClick={resetAmount}
-                  className="mt-1 text-xs text-gray-500 hover:text-gray-700"
+                  className="mt-1 text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
                 >
                   초기화
                 </button>
@@ -237,26 +239,26 @@ const AllowanceTracker = () => {
                       "p-3 rounded-xl text-center transition-all border-2",
                       "flex flex-col items-center justify-center",
                       transactionType === "income"
-                        ? "border-green-200 bg-green-50 hover:bg-green-100"
-                        : "border-red-200 bg-red-50 hover:bg-red-100"
+                        ? "border-green-200 bg-green-50 hover:bg-green-100 dark:border-green-800 dark:bg-green-900/30 dark:hover:bg-green-800/50 dark:text-green-200"
+                        : "border-red-200 bg-red-50 hover:bg-red-100 dark:border-red-800 dark:bg-red-900/30 dark:hover:bg-red-800/50 dark:text-red-200"
                     )}
                   >
                     <span className="text-xl font-semibold">{preset.value.toLocaleString()}</span>
-                    <span className="text-xs text-gray-500">원</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">원</span>
                   </button>
                 ))}
               </div>
             </div>
             
             <div>
-              <label htmlFor="category" className="block mb-1 text-sm font-medium text-gray-700">
+              <label htmlFor="category" className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                 분류
               </label>
               <select
                 id="category"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as CategoryType)}
-                className="candy-input w-full"
+                className="candy-input w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 required
               >
                 {Object.keys(
@@ -272,7 +274,7 @@ const AllowanceTracker = () => {
             </div>
             
             <div>
-              <label htmlFor="description" className="block mb-1 text-sm font-medium text-gray-700">
+              <label htmlFor="description" className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
                 내용 (선택)
               </label>
               <input
@@ -281,7 +283,7 @@ const AllowanceTracker = () => {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder={transactionType === "income" ? "누구한테 받았나요?" : "무엇에 썼나요?"}
-                className="candy-input w-full"
+                className="candy-input w-full dark:bg-gray-700 dark:border-gray-600 dark:text-white dark:placeholder-gray-400"
               />
             </div>
             
@@ -290,7 +292,7 @@ const AllowanceTracker = () => {
                 type="button"
                 variant="outline"
                 onClick={() => setShowAddForm(false)}
-                className="flex-1"
+                className="flex-1 dark:text-white dark:border-gray-600 dark:hover:bg-gray-700"
                 disabled={isLoading}
               >
                 취소
@@ -300,8 +302,8 @@ const AllowanceTracker = () => {
                 className={cn(
                   "flex-1",
                   transactionType === "income" 
-                    ? "bg-green-500 hover:bg-green-600 text-white" 
-                    : "bg-pink-500 hover:bg-pink-600 text-white"
+                    ? "bg-green-500 hover:bg-green-600 text-white dark:bg-green-700 dark:hover:bg-green-600" 
+                    : "bg-pink-500 hover:bg-pink-600 text-white dark:bg-pink-700 dark:hover:bg-pink-600"
                 )}
                 disabled={amount <= 0 || isLoading}
               >
@@ -318,7 +320,7 @@ const AllowanceTracker = () => {
         
         <div className="space-y-3">
           {transactions.length === 0 ? (
-            <div className="text-center py-6 text-gray-500">거래 내역이 없습니다</div>
+            <div className="text-center py-6 text-gray-500 dark:text-gray-400">거래 내역이 없습니다</div>
           ) : (
             transactions.map((transaction) => (
               <div 
@@ -327,15 +329,15 @@ const AllowanceTracker = () => {
                   "flex items-center justify-between p-3 rounded-xl transition-all",
                   "border hover:shadow-sm",
                   transaction.type === "income" 
-                    ? "border-green-100 bg-green-50" 
-                    : "border-red-100 bg-red-50"
+                    ? "border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-900/20" 
+                    : "border-red-100 bg-red-50 dark:border-red-900 dark:bg-red-900/20"
                 )}
               >
                 <div className="flex items-center space-x-3">
                   <CategoryIcon category={transaction.category as CategoryType} />
                   <div>
-                    <p className="font-medium">{transaction.description || transaction.category}</p>
-                    <div className="flex items-center text-xs text-gray-500">
+                    <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
+                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                       <CalendarIcon size={12} className="mr-1" />
                       {new Date(transaction.date).toLocaleDateString('ko-KR', {
                         month: 'short',
@@ -347,7 +349,7 @@ const AllowanceTracker = () => {
                 <span 
                   className={cn(
                     "font-semibold",
-                    transaction.type === "income" ? "text-green-600" : "text-red-500"
+                    transaction.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
                   )}
                 >
                   {transaction.type === "income" ? "+" : "-"}
