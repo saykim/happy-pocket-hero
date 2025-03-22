@@ -50,6 +50,7 @@
 .dark .candy-card {
   background-color: rgba(30, 41, 59, 0.8);
   border-color: rgba(51, 65, 85, 0.5);
+  color: rgb(226, 232, 240);
 }
 
 .dark input,
@@ -70,4 +71,49 @@
 
 .dark ::-webkit-calendar-picker-indicator {
   filter: invert(1);
+}
+
+/* Enhanced shape and font visibility in dark mode */
+.dark .card,
+.dark .glass-card {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: rgba(71, 85, 105, 0.7);
+  color: rgb(226, 232, 240);
+}
+
+.dark .text-gray-700,
+.dark .text-gray-600,
+.dark .text-gray-500 {
+  color: rgb(203, 213, 225);
+}
+
+.dark .bg-white {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+.dark .border-gray-200,
+.dark .border-gray-300 {
+  border-color: rgba(71, 85, 105, 0.7);
+}
+
+/* Improve icon visibility in dark mode */
+.dark [class*="lucide-"] {
+  color: rgb(226, 232, 240);
+}
+
+/* Make transaction cards more visible in dark mode */
+.dark .rounded-xl.border.p-4.mb-2 {
+  background-color: rgba(30, 41, 59, 0.9);
+  border-color: rgba(71, 85, 105, 0.7);
+}
+
+/* Adjust badge colors in dark mode */
+.dark .badge-card {
+  background-color: rgba(30, 41, 59, 0.8);
+  border-color: rgba(51, 65, 85, 0.5);
+}
+
+/* Enhanced category icon visibility */
+.dark [class*="bg-candy-"] {
+  opacity: 0.9;
 }

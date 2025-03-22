@@ -29,10 +29,29 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
     // Apply theme to document
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
+      // Force better visibility for inputs and other elements
+      document.body.classList.add("dark-theme");
     } else {
       document.documentElement.classList.remove("dark");
+      document.body.classList.remove("dark-theme");
     }
   }, [theme]);
+
+  // Add listener for system theme changes
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    
+    const handleChange = (e: MediaQueryListEvent) => {
+      const userTheme = localStorage.getItem("theme");
+      if (!userTheme) {
+        setThemeState(e.matches ? "dark" : "light");
+      }
+    };
+    
+    mediaQuery.addEventListener("change", handleChange);
+    
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, []);
 
   const toggleTheme = () => {
     setThemeState(prevTheme => (prevTheme === "light" ? "dark" : "light"));

@@ -12,7 +12,7 @@ export const ThemeToggle = () => {
       variant="outline"
       size="icon"
       onClick={toggleTheme}
-      className="rounded-full border-none hover:bg-accent"
+      className="rounded-full border-none hover:bg-accent dark:hover:bg-gray-700 dark:text-gray-200"
       aria-label="테마 변경"
     >
       {theme === "dark" ? (
