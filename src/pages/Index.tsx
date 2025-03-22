@@ -5,6 +5,7 @@ import { useUser } from "@/context/UserContext";
 import UserSelector from "@/components/UserSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+import { ThemeToggleGroup } from "@/components/ThemeToggle";
 
 const Index = () => {
   const { isLoading, currentUser } = useUser();
@@ -25,7 +26,7 @@ const Index = () => {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">데이터를 불러오는 중...</p>
+          <p className="text-gray-600 dark:text-gray-400">데이터를 불러오는 중...</p>
         </div>
       </div>
     );
@@ -35,7 +36,8 @@ const Index = () => {
     <div className="min-h-screen pb-24 md:pb-0 md:pt-20">
       <Navbar />
       <div className="container max-w-4xl px-4 py-8">
-        <div className="flex justify-end mb-4">
+        <div className="flex justify-between mb-4">
+          <ThemeToggleGroup />
           <UserSelector />
         </div>
         <Dashboard />
