@@ -107,6 +107,29 @@
   border-color: rgba(71, 85, 105, 0.7);
 }
 
+/* Better text visibility in dark mode for quick menu */
+.dark .flex.flex-col.items-center.justify-center.p-4.rounded-xl {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  color: rgb(226, 232, 240) !important;
+}
+
+.dark .flex.flex-col.items-center.justify-center.p-4.rounded-xl span {
+  color: rgb(226, 232, 240) !important;
+}
+
+/* Better visibility for recent activity items */
+.dark .flex.items-center.justify-between.p-3.rounded-lg.bg-gray-50 {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+.dark .flex.items-center.justify-between.p-3.rounded-lg.bg-gray-50 p {
+  color: rgb(226, 232, 240);
+}
+
+.dark .flex.items-center.justify-between.p-3.rounded-lg.bg-gray-50 .text-xs.text-gray-500 {
+  color: rgb(148, 163, 184);
+}
+
 /* Adjust badge colors in dark mode */
 .dark .badge-card {
   background-color: rgba(30, 41, 59, 0.8);
@@ -116,4 +139,38 @@
 /* Enhanced category icon visibility */
 .dark [class*="bg-candy-"] {
   opacity: 0.9;
+}
+
+/* Fix for colored text in dark mode */
+.dark .text-green-600 {
+  color: rgb(134, 239, 172);
+}
+
+.dark .text-red-500 {
+  color: rgb(252, 165, 165);
+}
+
+.dark .text-blue-500 {
+  color: rgb(147, 197, 253);
+}
+
+.dark .text-purple-600 {
+  color: rgb(192, 132, 252);
+}
+
+.dark .text-amber-600 {
+  color: rgb(253, 230, 138);
+}
+
+.dark .text-pink-600 {
+  color: rgb(249, 168, 212);
+}
+
+.dark .bg-gray-50 {
+  background-color: rgba(30, 41, 59, 0.8);
+}
+
+/* Quick menu item hover states in dark mode */
+.dark .hover\:bg-gray-100:hover {
+  background-color: rgba(51, 65, 85, 0.9) !important;
 }

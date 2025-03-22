@@ -237,8 +237,8 @@ const Dashboard = () => {
       {/* Header with greeting */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">{greeting}</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold dark:text-gray-100">{greeting}</h1>
+          <p className="text-gray-500 mt-1 dark:text-gray-300">
             {currentUser?.nickname ? `${currentUser.nickname}님, ` : ''}
             오늘도 용돈을 관리해 볼까요?
           </p>
@@ -252,8 +252,8 @@ const Dashboard = () => {
           <div key={stat.id} className="candy-card p-4 flex flex-col">
             <div className="flex justify-between items-start">
               <div>
-                <p className="text-gray-600 text-sm">{stat.title}</p>
-                <h3 className="text-xl font-bold mt-1">
+                <p className="text-gray-600 text-sm dark:text-gray-300">{stat.title}</p>
+                <h3 className="text-xl font-bold mt-1 dark:text-white">
                   <AnimatedNumber
                     value={stat.value}
                     suffix={stat.suffix}
@@ -281,7 +281,7 @@ const Dashboard = () => {
                 />
                 {Math.abs(stat.change)}%
               </span>
-              <span className="text-gray-500 ml-1">최근 변화</span>
+              <span className="text-gray-500 ml-1 dark:text-gray-300">최근 변화</span>
             </div>
           </div>
         ))}
@@ -289,7 +289,7 @@ const Dashboard = () => {
 
       {/* Quick Actions */}
       <div className="candy-card p-5">
-        <h2 className="text-lg font-bold mb-4">빠른 메뉴</h2>
+        <h2 className="text-lg font-bold mb-4 dark:text-white">빠른 메뉴</h2>
         <div className="grid grid-cols-3 gap-3">
           {[
             { title: '용돈', icon: HandCoins, color: 'bg-blue-500', link: '/allowance' },
@@ -300,12 +300,12 @@ const Dashboard = () => {
               key={action.title}
               to={action.link}
               className="flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50 
-              hover:bg-gray-100 transition-all hover:scale-105"
+              hover:bg-gray-100 transition-all hover:scale-105 dark:bg-gray-800 dark:hover:bg-gray-700"
             >
               <div className={`p-3 rounded-full ${action.color} mb-2`}>
                 <action.icon className="w-5 h-5 text-white" />
               </div>
-              <span className="text-sm font-medium">{action.title}</span>
+              <span className="text-sm font-medium dark:text-gray-200">{action.title}</span>
             </Link>
           ))}
         </div>
@@ -314,10 +314,10 @@ const Dashboard = () => {
       {/* Recent Activity */}
       <div className="candy-card p-5">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-bold">최근 활동</h2>
+          <h2 className="text-lg font-bold dark:text-white">최근 활동</h2>
           <Link
             to="/allowance"
-            className="text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center"
+            className="text-blue-500 hover:text-blue-700 text-sm font-medium flex items-center dark:hover:text-blue-300"
           >
             모두 보기 <ChevronsRight size={16} />
           </Link>
@@ -326,34 +326,34 @@ const Dashboard = () => {
         <div className="space-y-3">
           {isLoadingTransactions ? (
             <div className="py-6 text-center">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2"></div>
-              <p className="text-sm text-gray-500">데이터 로딩 중...</p>
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2 dark:border-blue-400"></div>
+              <p className="text-sm text-gray-500 dark:text-gray-300">데이터 로딩 중...</p>
             </div>
           ) : transactions && transactions.length > 0 ? (
             transactions.slice(0, 3).map((transaction) => (
               <div 
                 key={transaction.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-gray-50"
+                className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800"
               >
                 <div className="flex items-center">
                   <div 
                     className={cn(
                       "w-8 h-8 rounded-full flex items-center justify-center mr-3",
-                      transaction.type === 'income' ? 'bg-green-100' : 'bg-red-100'
+                      transaction.type === 'income' ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'
                     )}
                   >
                     <span 
                       className={cn(
                         "text-lg font-bold",
-                        transaction.type === 'income' ? 'text-green-600' : 'text-red-500'
+                        transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
                       )}
                     >
                       {transaction.type === 'income' ? '+' : '-'}
                     </span>
                   </div>
                   <div>
-                    <p className="font-medium">{transaction.description || transaction.category}</p>
-                    <p className="text-xs text-gray-500">
+                    <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {new Date(transaction.date).toLocaleDateString('ko-KR', {
                         month: 'long',
                         day: 'numeric',
@@ -364,7 +364,7 @@ const Dashboard = () => {
                 <span 
                   className={cn(
                     "font-semibold",
-                    transaction.type === 'income' ? 'text-green-600' : 'text-red-500'
+                    transaction.type === 'income' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'
                   )}
                 >
                   {transaction.amount.toLocaleString()}원
@@ -373,7 +373,7 @@ const Dashboard = () => {
             ))
           ) : (
             <div className="py-6 text-center">
-              <p className="text-sm text-gray-500">최근 거래 내역이 없습니다.</p>
+              <p className="text-sm text-gray-500 dark:text-gray-300">최근 거래 내역이 없습니다.</p>
             </div>
           )}
         </div>
