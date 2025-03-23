@@ -129,12 +129,6 @@ export default function LoginForm() {
           </Button>
         </form>
       </Form>
-      <div className="text-center text-sm">
-        <p className="text-gray-500 dark:text-gray-400">
-          시연: ID: siyeon, PWD: 1234<br />
-          도현: ID: dohyun, PWD: 4321
-        </p>
-      </div>
     </div>
   );
 }
