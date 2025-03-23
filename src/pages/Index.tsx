@@ -21,7 +21,7 @@ const Index = () => {
   }, [isLoading, currentUser, navigate]);
 
   const handleLogout = () => {
-    // Simply redirect to login page
+    // Show a toast and redirect to login
     toast({
       title: "로그아웃 되었습니다",
       description: "다시 로그인하려면 로그인 페이지로 이동하세요.",

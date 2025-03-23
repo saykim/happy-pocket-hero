@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 type MascotProps = {
   className?: string;
-  message?: string; // Added message prop
+  message?: string; // Optional message prop
 };
 
 const MascotGuide = ({ className, message }: MascotProps) => {
@@ -40,6 +40,14 @@ const MascotGuide = ({ className, message }: MascotProps) => {
           <path d="M90 115H110M90 115C90 120 100 125 100 115M110 115C110 120 100 125 100 115" stroke="#FF9494" strokeWidth="3" strokeLinecap="round" />
         </svg>
       </div>
+      
+      {/* Display message if provided */}
+      {message && (
+        <div className="absolute top-full left-1/2 transform -translate-x-1/2 mt-2 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg text-sm max-w-[200px] text-center">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 transform rotate-45 w-2 h-2 bg-white dark:bg-gray-800"></div>
+          {message}
+        </div>
+      )}
     </div>
   );
 };

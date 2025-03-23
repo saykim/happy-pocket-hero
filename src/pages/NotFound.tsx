@@ -18,7 +18,7 @@ const NotFound = () => {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6">
       <div className="text-center max-w-md">
         <div className="mb-6">
-          <MascotGuide className="mx-auto" />
+          <MascotGuide className="mx-auto" message="잘못된 페이지에요! 다시 돌아갈까요?" />
         </div>
         <h1 className="text-6xl font-bold text-primary mb-4">404</h1>
         <p className="text-xl text-gray-600 mb-8">

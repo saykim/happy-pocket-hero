@@ -9,6 +9,7 @@ import { useUser } from "@/context/UserContext";
 import { Form, FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const loginSchema = z.object({
   username: z.string().min(1, { message: "유저 이름을 입력해 주세요" }),
@@ -17,10 +18,22 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>;
 
+// Type for the login response
+type LoginResponse = {
+  success: boolean;
+  user?: {
+    id?: string;
+    username?: string;
+    nickname?: string;
+  };
+  message?: string;
+};
+
 export default function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { switchUser } = useUser();
+  const navigate = useNavigate();
 
   const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
@@ -43,7 +56,7 @@ export default function LoginForm() {
       }
 
       // Parse the JSON result if it's a string
-      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      const result: LoginResponse = typeof data === 'string' ? JSON.parse(data) : data;
       
       if (!result.success) {
         toast({
@@ -61,6 +74,9 @@ export default function LoginForm() {
         title: "로그인 성공",
         description: `${result.user?.nickname || result.user?.username}님 환영합니다!`,
       });
+      
+      // Redirect to home page after successful login
+      navigate('/');
       
     } catch (error) {
       console.error("Login error:", error);
