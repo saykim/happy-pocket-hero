@@ -212,18 +212,21 @@ export type Database = {
           created_at: string
           id: string
           nickname: string | null
+          password_hash: string | null
           username: string
         }
         Insert: {
           created_at?: string
           id?: string
           nickname?: string | null
+          password_hash?: string | null
           username: string
         }
         Update: {
           created_at?: string
           id?: string
           nickname?: string | null
+          password_hash?: string | null
           username?: string
         }
         Relationships: []
@@ -233,7 +236,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      basic_login: {
+        Args: {
+          username_input: string
+          password_input: string
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

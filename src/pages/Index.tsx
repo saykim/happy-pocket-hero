@@ -2,24 +2,32 @@
 import Navbar from "@/components/Navbar";
 import Dashboard from "@/components/Dashboard";
 import { useUser } from "@/context/UserContext";
-import UserSelector from "@/components/UserSelector";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { ThemeToggleGroup } from "@/components/ThemeToggle";
+import { LogOut } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const { isLoading, currentUser } = useUser();
   const { toast } = useToast();
+  const navigate = useNavigate();
   
   useEffect(() => {
     if (!isLoading && !currentUser) {
-      toast({
-        title: "유저를 선택해 주세요",
-        description: "데이터를 보려면 유저를 선택해 주세요.",
-        variant: "default",
-      });
+      navigate("/login");
     }
-  }, [isLoading, currentUser, toast]);
+  }, [isLoading, currentUser, navigate]);
+
+  const handleLogout = () => {
+    // Simply redirect to login page
+    toast({
+      title: "로그아웃 되었습니다",
+      description: "다시 로그인하려면 로그인 페이지로 이동하세요.",
+    });
+    navigate("/login");
+  };
 
   if (isLoading) {
     return (
@@ -38,7 +46,20 @@ const Index = () => {
       <div className="container max-w-4xl px-4 py-8">
         <div className="flex justify-between mb-4 items-center">
           <ThemeToggleGroup />
-          <UserSelector />
+          <div className="flex items-center gap-2">
+            <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              {currentUser?.nickname || currentUser?.username}님 
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleLogout}
+              className="flex items-center gap-1"
+            >
+              <LogOut size={14} />
+              로그아웃
+            </Button>
+          </div>
         </div>
         <Dashboard />
       </div>

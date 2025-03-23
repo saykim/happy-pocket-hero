@@ -4,23 +4,14 @@ import { cn } from "@/lib/utils";
 
 type MascotProps = {
   className?: string;
-  message?: string;
-  showMessage?: boolean;
 };
 
-const MascotGuide = ({ className, message = "안녕하세요!", showMessage = true }: MascotProps) => {
+const MascotGuide = ({ className }: MascotProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState(message);
 
   useEffect(() => {
     setIsVisible(true);
-    
-    const timer = setTimeout(() => {
-      setCurrentMessage(message);
-    }, 300);
-    
-    return () => clearTimeout(timer);
-  }, [message]);
+  }, []);
 
   return (
     <div className={cn("relative", className)}>
@@ -48,19 +39,6 @@ const MascotGuide = ({ className, message = "안녕하세요!", showMessage = tr
           <path d="M90 115H110M90 115C90 120 100 125 100 115M110 115C110 120 100 125 100 115" stroke="#FF9494" strokeWidth="3" strokeLinecap="round" />
         </svg>
       </div>
-      
-      {showMessage && (
-        <div className={cn(
-          "absolute top-0 right-0 transform translate-x-16 -translate-y-2",
-          "bg-white p-3 rounded-xl rounded-bl-none shadow-md border border-gray-100",
-          "text-sm max-w-[12rem] z-10 font-medium text-gray-700",
-          "transition-all duration-500",
-          isVisible ? "opacity-100 scale-100" : "opacity-0 scale-95"
-        )}>
-          {currentMessage}
-          <div className="absolute -left-2 bottom-0 w-4 h-4 bg-white border-l border-b border-gray-100 transform rotate-45"></div>
-        </div>
-      )}
     </div>
   );
 };
