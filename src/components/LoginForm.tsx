@@ -42,7 +42,10 @@ export default function LoginForm() {
         throw error;
       }
 
-      if (!data.success) {
+      // Parse the JSON result if it's a string
+      const result = typeof data === 'string' ? JSON.parse(data) : data;
+      
+      if (!result.success) {
         toast({
           title: "로그인 실패",
           description: "아이디 또는 비밀번호가 일치하지 않습니다.",
@@ -56,7 +59,7 @@ export default function LoginForm() {
       
       toast({
         title: "로그인 성공",
-        description: `${data.user.nickname || data.user.username}님 환영합니다!`,
+        description: `${result.user?.nickname || result.user?.username}님 환영합니다!`,
       });
       
     } catch (error) {

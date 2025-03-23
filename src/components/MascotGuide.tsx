@@ -4,9 +4,10 @@ import { cn } from "@/lib/utils";
 
 type MascotProps = {
   className?: string;
+  message?: string; // Added message prop
 };
 
-const MascotGuide = ({ className }: MascotProps) => {
+const MascotGuide = ({ className, message }: MascotProps) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {

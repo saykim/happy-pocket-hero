@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PiggyBank, Target, ListTodo, ChevronsRight, TrendingUp, HandCoins } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -243,7 +242,7 @@ const Dashboard = () => {
             오늘도 용돈을 관리해 볼까요?
           </p>
         </div>
-        <MascotGuide message="목표를 달성하면 포인트를 얻을 수 있어요!" />
+        <MascotGuide />
       </div>
 
       {/* Stats grid */}
