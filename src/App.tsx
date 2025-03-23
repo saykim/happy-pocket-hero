@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import SignIn from "./pages/SignIn";
 import NotFound from "./pages/NotFound";
 import AllowanceTracker from "./components/AllowanceTracker";
 import GoalTracker from "./components/GoalTracker";
@@ -32,7 +33,7 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }
 
   if (!currentUser) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/signin" replace />;
   }
 
   return <>{children}</>;
@@ -96,6 +97,7 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/signin" element={<SignIn />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/allowance" element={<AllowancePage />} />
               <Route path="/goals" element={<GoalsPage />} />

@@ -16,7 +16,7 @@ const Index = () => {
   
   useEffect(() => {
     if (!isLoading && !currentUser) {
-      navigate("/login");
+      navigate("/signin");
     }
   }, [isLoading, currentUser, navigate]);
 
@@ -26,7 +26,7 @@ const Index = () => {
       title: "로그아웃 되었습니다",
       description: "다시 로그인하려면 로그인 페이지로 이동하세요.",
     });
-    navigate("/login");
+    navigate("/signin");
   };
 
   if (isLoading) {
