@@ -61,6 +61,12 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   // Function to switch between users
   const switchUser = async (username: string) => {
     try {
+      // If empty username is provided, set currentUser to null (logout)
+      if (!username) {
+        setCurrentUser(null);
+        return;
+      }
+      
       const { data, error } = await supabase
         .from('users')
         .select('*')

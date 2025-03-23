@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const { isLoading, currentUser } = useUser();
+  const { isLoading, currentUser, switchUser } = useUser();
   const { toast } = useToast();
   const navigate = useNavigate();
   
@@ -20,12 +20,18 @@ const Index = () => {
     }
   }, [isLoading, currentUser, navigate]);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Find user with ID 0 or null to represent "logged out" state
+    // This is a simplified logout since we're using a mock auth system
+    await switchUser("");
+    
     // Show a toast and redirect to login
     toast({
       title: "로그아웃 되었습니다",
       description: "다시 로그인하려면 로그인 페이지로 이동하세요.",
     });
+    
+    // Navigate to signin page
     navigate("/signin");
   };
 
