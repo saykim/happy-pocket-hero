@@ -1,12 +1,26 @@
-
 import { useState, useEffect } from "react";
-import { PlusCircle, MinusCircle, CalendarIcon, Wallet, Coins } from "lucide-react";
+import { PlusCircle, MinusCircle, CalendarIcon, Wallet, Coins, Trash2 } from "lucide-react";
 import AnimatedNumber from "./ui/AnimatedNumber";
 import CategoryIcon, { CategoryType } from "./CategoryIcon";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/context/UserContext";
+import { useToast } from "@/hooks/use-toast";
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from "@/components/ui/context-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 // Types for our transactions
 type Transaction = {
@@ -20,6 +34,7 @@ type Transaction = {
 
 const AllowanceTracker = () => {
   const { currentUser } = useUser();
+  const { toast } = useToast();
   const [balance, setBalance] = useState(5000);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -28,6 +43,8 @@ const AllowanceTracker = () => {
   const [category, setCategory] = useState<CategoryType>("용돈");
   const [description, setDescription] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null);
 
   // Predefined amounts for quick selection
   const presetAmounts = [
@@ -151,6 +168,56 @@ const AllowanceTracker = () => {
       setShowAddForm(false);
       setIsLoading(false);
     }
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!transactionToDelete || !currentUser) return;
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase
+        .from('transactions')
+        .delete()
+        .eq('id', transactionToDelete.id)
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+        console.error("Error deleting transaction:", error);
+        toast({
+          title: "삭제 실패",
+          description: "거래 내역을 삭제하는데 문제가 발생했습니다.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Update local state
+      setTransactions(transactions.filter(t => t.id !== transactionToDelete.id));
+      
+      // Update balance
+      if (transactionToDelete.type === "income") {
+        setBalance(prev => prev - transactionToDelete.amount);
+      } else {
+        setBalance(prev => prev + transactionToDelete.amount);
+      }
+      
+      toast({
+        title: "삭제 완료",
+        description: "거래 내역이 삭제되었습니다.",
+      });
+    } catch (error) {
+      console.error("Failed to delete transaction:", error);
+    } finally {
+      setIsLoading(false);
+      setShowDeleteDialog(false);
+      setTransactionToDelete(null);
+    }
+  };
+
+  const openDeleteDialog = (transaction: Transaction) => {
+    setTransactionToDelete(transaction);
+    setShowDeleteDialog(true);
   };
 
   return (
@@ -323,43 +390,116 @@ const AllowanceTracker = () => {
             <div className="text-center py-6 text-gray-500 dark:text-gray-400">거래 내역이 없습니다</div>
           ) : (
             transactions.map((transaction) => (
-              <div 
-                key={transaction.id}
-                className={cn(
-                  "flex items-center justify-between p-3 rounded-xl transition-all",
-                  "border hover:shadow-sm",
-                  transaction.type === "income" 
-                    ? "border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-900/20" 
-                    : "border-red-100 bg-red-50 dark:border-red-900 dark:bg-red-900/20"
-                )}
-              >
-                <div className="flex items-center space-x-3">
-                  <CategoryIcon category={transaction.category as CategoryType} />
-                  <div>
-                    <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
-                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                      <CalendarIcon size={12} className="mr-1" />
-                      {new Date(transaction.date).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
+              <ContextMenu key={transaction.id}>
+                <ContextMenuTrigger>
+                  <div 
+                    className={cn(
+                      "flex items-center justify-between p-3 rounded-xl transition-all",
+                      "border hover:shadow-sm",
+                      transaction.type === "income" 
+                        ? "border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-900/20" 
+                        : "border-red-100 bg-red-50 dark:border-red-900 dark:bg-red-900/20"
+                    )}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <CategoryIcon category={transaction.category as CategoryType} />
+                      <div>
+                        <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                          <CalendarIcon size={12} className="mr-1" />
+                          {new Date(transaction.date).toLocaleDateString('ko-KR', {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </div>
+                      </div>
                     </div>
+                    <span 
+                      className={cn(
+                        "font-semibold",
+                        transaction.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                      )}
+                    >
+                      {transaction.type === "income" ? "+" : "-"}
+                      {transaction.amount.toLocaleString()}원
+                    </span>
                   </div>
-                </div>
-                <span 
-                  className={cn(
-                    "font-semibold",
-                    transaction.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
-                  )}
-                >
-                  {transaction.type === "income" ? "+" : "-"}
-                  {transaction.amount.toLocaleString()}원
-                </span>
-              </div>
+                </ContextMenuTrigger>
+                <ContextMenuContent>
+                  <ContextMenuItem 
+                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/50"
+                    onClick={() => openDeleteDialog(transaction)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    삭제하기
+                  </ContextMenuItem>
+                </ContextMenuContent>
+              </ContextMenu>
             ))
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>거래 내역 삭제</DialogTitle>
+            <DialogDescription>
+              정말로 이 거래 내역을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-2">
+            {transactionToDelete && (
+              <div className={cn(
+                "p-3 rounded-lg",
+                transactionToDelete.type === "income" 
+                  ? "bg-green-50 dark:bg-green-900/20" 
+                  : "bg-red-50 dark:bg-red-900/20"
+              )}>
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center space-x-2">
+                    <CategoryIcon category={transactionToDelete.category as CategoryType} />
+                    <span className="font-medium dark:text-white">
+                      {transactionToDelete.description || transactionToDelete.category}
+                    </span>
+                  </div>
+                  <span className={cn(
+                    "font-semibold",
+                    transactionToDelete.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
+                  )}>
+                    {transactionToDelete.type === "income" ? "+" : "-"}
+                    {transactionToDelete.amount.toLocaleString()}원
+                  </span>
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  {new Date(transactionToDelete.date).toLocaleDateString('ko-KR', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowDeleteDialog(false)}
+              disabled={isLoading}
+            >
+              취소
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDeleteTransaction}
+              disabled={isLoading}
+            >
+              {isLoading ? "삭제 중..." : "삭제"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
