@@ -36,6 +36,9 @@ export default function SignIn() {
       <div className="w-full max-w-md candy-card p-8">
         <div className="mb-6 text-center">
           <MascotGuide className="mx-auto" message="어서오세요! 로그인해 주세요!" />
+          <p className="mt-4 text-gray-600 dark:text-gray-400">
+            아이디와 비밀번호를 입력해 주세요
+          </p>
         </div>
         <LoginForm />
       </div>

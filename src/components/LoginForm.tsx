@@ -126,7 +126,7 @@ export default function LoginForm() {
               <FormItem>
                 <FormLabel>아이디</FormLabel>
                 <FormControl>
-                  <Input placeholder="사용자 이름" {...field} />
+                  <Input placeholder="아이디" {...field} />
                 </FormControl>
               </FormItem>
             )}
