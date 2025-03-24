@@ -390,51 +390,48 @@ const AllowanceTracker = () => {
             <div className="text-center py-6 text-gray-500 dark:text-gray-400">거래 내역이 없습니다</div>
           ) : (
             transactions.map((transaction) => (
-              <ContextMenu key={transaction.id}>
-                <ContextMenuTrigger>
-                  <div 
+              <div 
+                key={transaction.id}
+                className={cn(
+                  "flex items-center justify-between p-3 rounded-xl transition-all",
+                  "border hover:shadow-sm",
+                  transaction.type === "income" 
+                    ? "border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-900/20" 
+                    : "border-red-100 bg-red-50 dark:border-red-900 dark:bg-red-900/20"
+                )}
+              >
+                <div className="flex items-center space-x-3">
+                  <CategoryIcon category={transaction.category as CategoryType} />
+                  <div>
+                    <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
+                    <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
+                      <CalendarIcon size={12} className="mr-1" />
+                      {new Date(transaction.date).toLocaleDateString('ko-KR', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span 
                     className={cn(
-                      "flex items-center justify-between p-3 rounded-xl transition-all",
-                      "border hover:shadow-sm",
-                      transaction.type === "income" 
-                        ? "border-green-100 bg-green-50 dark:border-green-900 dark:bg-green-900/20" 
-                        : "border-red-100 bg-red-50 dark:border-red-900 dark:bg-red-900/20"
+                      "font-semibold",
+                      transaction.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
                     )}
                   >
-                    <div className="flex items-center space-x-3">
-                      <CategoryIcon category={transaction.category as CategoryType} />
-                      <div>
-                        <p className="font-medium dark:text-white">{transaction.description || transaction.category}</p>
-                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
-                          <CalendarIcon size={12} className="mr-1" />
-                          {new Date(transaction.date).toLocaleDateString('ko-KR', {
-                            month: 'short',
-                            day: 'numeric',
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                    <span 
-                      className={cn(
-                        "font-semibold",
-                        transaction.type === "income" ? "text-green-600 dark:text-green-400" : "text-red-500 dark:text-red-400"
-                      )}
-                    >
-                      {transaction.type === "income" ? "+" : "-"}
-                      {transaction.amount.toLocaleString()}원
-                    </span>
-                  </div>
-                </ContextMenuTrigger>
-                <ContextMenuContent>
-                  <ContextMenuItem 
-                    className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 focus:bg-red-50 dark:focus:bg-red-950/50"
+                    {transaction.type === "income" ? "+" : "-"}
+                    {transaction.amount.toLocaleString()}원
+                  </span>
+                  <button
                     onClick={() => openDeleteDialog(transaction)}
+                    className="text-gray-400 hover:text-red-500 dark:text-gray-500 dark:hover:text-red-400 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800"
+                    aria-label="삭제"
                   >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    삭제하기
-                  </ContextMenuItem>
-                </ContextMenuContent>
-              </ContextMenu>
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
             ))
           )}
         </div>
