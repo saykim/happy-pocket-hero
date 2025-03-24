@@ -34,6 +34,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        console.log('Fetching users from database...');
         const { data, error } = await supabase
           .from('users')
           .select('*');
@@ -44,9 +45,24 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         }
         
         if (data && data.length > 0) {
+          console.log('Users fetched successfully:', data.length);
           setUsers(data);
-          // Set the first user as current by default
-          setCurrentUser(data[0]);
+          
+          // Check if we have a stored username in localStorage
+          const storedUsername = localStorage.getItem('currentUsername');
+          if (storedUsername) {
+            console.log('Found stored username:', storedUsername);
+            const foundUser = data.find(user => user.username === storedUsername);
+            if (foundUser) {
+              console.log('Setting current user from stored username');
+              setCurrentUser(foundUser);
+            } else {
+              console.log('Stored username not found in data');
+              localStorage.removeItem('currentUsername');
+            }
+          }
+        } else {
+          console.log('No users found in database');
         }
       } catch (error) {
         console.error('Unexpected error fetching users:', error);
@@ -63,10 +79,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
     try {
       // If empty username is provided, set currentUser to null (logout)
       if (!username) {
+        console.log('Logging out');
         setCurrentUser(null);
+        localStorage.removeItem('currentUsername');
         return;
       }
       
+      console.log('Switching to user:', username);
       const { data, error } = await supabase
         .from('users')
         .select('*')
@@ -78,7 +97,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
       
+      console.log('User found:', data);
       setCurrentUser(data);
+      localStorage.setItem('currentUsername', username);
     } catch (error) {
       console.error('Unexpected error switching user:', error);
     }

@@ -46,17 +46,27 @@ export default function LoginForm() {
   async function onSubmit(values: LoginValues) {
     setIsLoading(true);
     try {
+      console.log("Attempting login with:", values.username);
+      
       const { data, error } = await supabase.rpc('basic_login', {
         username_input: values.username,
         password_input: values.password
       });
 
       if (error) {
-        throw error;
+        console.error("Login error from RPC:", error);
+        toast({
+          title: "로그인 실패",
+          description: "서버 오류가 발생했습니다. 다시 시도해 주세요.",
+          variant: "destructive",
+        });
+        setIsLoading(false);
+        return;
       }
 
       // Parse the JSON result if it's a string
       const result: LoginResponse = typeof data === 'string' ? JSON.parse(data) : data;
+      console.log("Login result:", result);
       
       if (!result.success) {
         toast({
@@ -64,20 +74,29 @@ export default function LoginForm() {
           description: "아이디 또는 비밀번호가 일치하지 않습니다.",
           variant: "destructive",
         });
+        setIsLoading(false);
         return;
       }
 
       // Login successful, switch to this user
-      await switchUser(values.username);
-      
-      toast({
-        title: "로그인 성공",
-        description: `${result.user?.nickname || result.user?.username}님 환영합니다!`,
-      });
-      
-      // Redirect to home page after successful login
-      navigate('/');
-      
+      if (result.user && result.user.username) {
+        await switchUser(result.user.username);
+        
+        toast({
+          title: "로그인 성공",
+          description: `${result.user?.nickname || result.user?.username}님 환영합니다!`,
+        });
+        
+        // Redirect to home page after successful login
+        navigate('/');
+      } else {
+        console.error("Missing user information in response:", result);
+        toast({
+          title: "로그인 오류",
+          description: "사용자 정보를 가져오는데 실패했습니다.",
+          variant: "destructive",
+        });
+      }
     } catch (error) {
       console.error("Login error:", error);
       toast({

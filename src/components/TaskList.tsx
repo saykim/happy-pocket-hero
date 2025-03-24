@@ -1,7 +1,10 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useUser } from '@/context/UserContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type Task = {
   id: string;
@@ -11,81 +14,208 @@ type Task = {
   points: number;
 };
 
-// Initial tasks data
-const initialTasks = [
-  {
-    id: '1',
-    title: '저축통에 동전 모으기',
-    completed: false,
-    createdAt: new Date().toISOString(),
-    points: 50,
-  },
-  {
-    id: '2',
-    title: '용돈기입장 작성하기',
-    completed: true,
-    createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-    points: 30,
-  },
-  {
-    id: '3',
-    title: '이번주 목표 저축액 달성하기',
-    completed: false,
-    createdAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-    points: 100,
-  },
-];
-
 const TaskList = () => {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showInput, setShowInput] = useState(false);
-  const [totalPoints, setTotalPoints] = useState(30); // Starting with 30 points for the completed task
+  const [totalPoints, setTotalPoints] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const { currentUser } = useUser();
+  const { toast } = useToast();
 
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Fetch tasks when component mounts or when user changes
+  useEffect(() => {
+    if (!currentUser) return;
     
-    if (!newTaskTitle.trim()) return;
-    
-    const newTask = {
-      id: Date.now().toString(),
-      title: newTaskTitle,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      points: Math.floor(Math.random() * 50) + 30, // Random points between 30-80
+    const fetchTasks = async () => {
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('*')
+          .eq('user_id', currentUser.id)
+          .order('created_at', { ascending: false });
+        
+        if (error) {
+          console.error('Error fetching tasks:', error);
+          toast({
+            title: '오류',
+            description: '할 일 목록을 불러오는 중 오류가 발생했습니다.',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Transform data to match Task type
+        const formattedTasks = data.map(task => ({
+          id: task.id,
+          title: task.title,
+          completed: task.status === 'completed',
+          createdAt: task.created_at,
+          points: task.reward || Math.floor(Math.random() * 50) + 30, // Use reward or generate random
+        }));
+        
+        setTasks(formattedTasks);
+        
+        // Calculate total points from completed tasks
+        const completedPoints = formattedTasks
+          .filter(task => task.completed)
+          .reduce((sum, task) => sum + task.points, 0);
+          
+        setTotalPoints(completedPoints);
+      } catch (error) {
+        console.error('Unexpected error fetching tasks:', error);
+      } finally {
+        setIsLoading(false);
+      }
     };
     
-    setTasks([...tasks, newTask]);
-    setNewTaskTitle('');
-    setShowInput(false);
-  };
+    fetchTasks();
+  }, [currentUser, toast]);
 
-  const toggleTaskCompletion = (taskId: string) => {
-    setTasks(
-      tasks.map((task) => {
-        if (task.id === taskId) {
-          // Update total points
-          if (!task.completed) {
-            setTotalPoints((prev) => prev + task.points);
-          } else {
-            setTotalPoints((prev) => prev - task.points);
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newTaskTitle.trim() || !currentUser) return;
+    
+    const pointsValue = Math.floor(Math.random() * 50) + 30; // Random points between 30-80
+    
+    // Create task in the database
+    try {
+      const { data, error } = await supabase
+        .from('tasks')
+        .insert([
+          {
+            title: newTaskTitle,
+            user_id: currentUser.id,
+            reward: pointsValue,
+            status: 'todo'
           }
-          
-          return { ...task, completed: !task.completed };
-        }
-        return task;
-      })
-    );
+        ])
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error adding task:', error);
+        toast({
+          title: '오류',
+          description: '할 일을 추가하는 중 오류가 발생했습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Add the new task to the local state
+      const newTask = {
+        id: data.id,
+        title: data.title,
+        completed: false,
+        createdAt: data.created_at,
+        points: data.reward,
+      };
+      
+      setTasks([newTask, ...tasks]);
+      setNewTaskTitle('');
+      setShowInput(false);
+      
+      toast({
+        title: '성공',
+        description: '새로운 할 일이 추가되었습니다.',
+      });
+    } catch (error) {
+      console.error('Unexpected error adding task:', error);
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    const taskToDelete = tasks.find((task) => task.id === taskId);
+  const toggleTaskCompletion = async (taskId: string) => {
+    const taskToUpdate = tasks.find(task => task.id === taskId);
+    if (!taskToUpdate || !currentUser) return;
     
-    if (taskToDelete && taskToDelete.completed) {
-      setTotalPoints((prev) => prev - taskToDelete.points);
+    const newStatus = taskToUpdate.completed ? 'todo' : 'completed';
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId)
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+        console.error('Error updating task:', error);
+        toast({
+          title: '오류',
+          description: '할 일 상태를 변경하는 중 오류가 발생했습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // Update local state
+      setTasks(
+        tasks.map((task) => {
+          if (task.id === taskId) {
+            const newCompletedState = !task.completed;
+            
+            // Update total points
+            if (newCompletedState) {
+              setTotalPoints(prev => prev + task.points);
+            } else {
+              setTotalPoints(prev => prev - task.points);
+            }
+            
+            return { ...task, completed: newCompletedState };
+          }
+          return task;
+        })
+      );
+      
+      toast({
+        title: '성공',
+        description: `할 일이 ${newStatus === 'completed' ? '완료' : '미완료'}로 변경되었습니다.`,
+      });
+    } catch (error) {
+      console.error('Unexpected error updating task:', error);
     }
+  };
+
+  const deleteTask = async (taskId: string) => {
+    if (!currentUser) return;
     
-    setTasks(tasks.filter((task) => task.id !== taskId));
+    const taskToDelete = tasks.find((task) => task.id === taskId);
+    if (!taskToDelete) return;
+    
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+        .eq('user_id', currentUser.id);
+      
+      if (error) {
+        console.error('Error deleting task:', error);
+        toast({
+          title: '오류',
+          description: '할 일을 삭제하는 중 오류가 발생했습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
+      // If completed, subtract points
+      if (taskToDelete.completed) {
+        setTotalPoints(prev => prev - taskToDelete.points);
+      }
+      
+      // Remove from local state
+      setTasks(tasks.filter((task) => task.id !== taskId));
+      
+      toast({
+        title: '성공',
+        description: '할 일이 삭제되었습니다.',
+      });
+    } catch (error) {
+      console.error('Unexpected error deleting task:', error);
+    }
   };
 
   return (
@@ -141,7 +271,12 @@ const TaskList = () => {
 
       {/* Tasks list */}
       <div className="space-y-2">
-        {tasks.length === 0 ? (
+        {isLoading ? (
+          <div className="text-center py-10">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-gray-500">할 일을 불러오는 중...</p>
+          </div>
+        ) : tasks.length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
             <ListTodo size={48} className="mx-auto mb-3 text-gray-400" />
             <p className="text-gray-500">할 일 목록이 비어있어요</p>
