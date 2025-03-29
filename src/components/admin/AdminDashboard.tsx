@@ -153,19 +153,21 @@ const AdminDashboard = () => {
         </Button>
       </div>
 
+      {/* User Activity Chart - Moved to top */}
+      <UserActivityChart userSummaries={userSummaries} />
+      
+      {/* User Summary Table - Moved to second position */}
+      <UserSummaryTable userSummaries={userSummaries} />
+
       {/* Stats Cards */}
       <StatCards stats={stats} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <UserActivityChart userSummaries={userSummaries} />
         <FinanceDistributionChart stats={stats} />
         <GoalCompletionChart stats={stats} />
         <TaskCompletionChart stats={stats} />
       </div>
-
-      {/* User Summary Table */}
-      <UserSummaryTable userSummaries={userSummaries} />
     </div>
   );
 };

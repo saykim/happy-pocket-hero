@@ -47,9 +47,14 @@ const Index = () => {
     );
   }
 
+  // Only show Navbar for non-admin users
+  const isAdmin = currentUser?.isAdmin;
+  
   return (
     <div className="min-h-screen pb-24 md:pb-0 md:pt-20 dark:bg-gray-900">
-      <Navbar />
+      {/* Only show Navbar for non-admin users */}
+      {!isAdmin && <Navbar />}
+      
       <div className="container max-w-4xl px-4 py-8">
         <div className="flex justify-between mb-4 items-center">
           <ThemeToggleGroup />
