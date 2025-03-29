@@ -341,7 +341,7 @@ const AdminDashboard = () => {
                   <td className="py-2 px-4">{user.transactions}</td>
                   <td className="py-2 px-4">{user.goals}</td>
                   <td className="py-2 px-4">{user.tasks}</td>
-                  <td className="py-2 px-4" className={user.balance >= 0 ? "text-green-600" : "text-red-600"}>
+                  <td className={`py-2 px-4 ${user.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
                     {user.balance.toLocaleString()}원
                   </td>
                 </tr>
