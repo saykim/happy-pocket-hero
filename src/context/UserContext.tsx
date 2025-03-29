@@ -94,6 +94,22 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log('Switching to user:', username);
+      
+      // Special case for admin user who doesn't exist in the database
+      if (username === 'admin') {
+        const adminUser: User = {
+          id: 'admin',
+          username: 'admin',
+          nickname: '관리자',
+          isAdmin: true
+        };
+        
+        setCurrentUser(adminUser);
+        localStorage.setItem('currentUsername', username);
+        return;
+      }
+      
+      // For regular users, fetch from database
       const { data, error } = await supabase
         .from('users')
         .select('*')
