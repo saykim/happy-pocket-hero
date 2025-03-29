@@ -164,9 +164,9 @@ const AdminDashboard = () => {
 
       {/* Charts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <FinanceDistributionChart stats={stats} />
-        <GoalCompletionChart stats={stats} />
-        <TaskCompletionChart stats={stats} />
+        <FinanceDistributionChart stats={stats} userSummaries={userSummaries} />
+        <GoalCompletionChart stats={stats} userSummaries={userSummaries} />
+        <TaskCompletionChart stats={stats} userSummaries={userSummaries} />
       </div>
     </div>
   );
