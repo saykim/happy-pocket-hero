@@ -48,6 +48,21 @@ export default function LoginForm() {
     try {
       console.log("Attempting login with:", values.username);
       
+      // Special handling for admin account
+      if (values.username === 'admin' && values.password === 'admin0109') {
+        // Direct admin login without checking database
+        await switchUser('admin');
+        
+        toast({
+          title: "관리자 로그인 성공",
+          description: "관리자 대시보드로 이동합니다.",
+        });
+        
+        navigate('/');
+        setIsLoading(false);
+        return;
+      }
+      
       const { data, error } = await supabase.rpc('basic_login', {
         username_input: values.username,
         password_input: values.password

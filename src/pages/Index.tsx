@@ -1,6 +1,7 @@
 
 import Navbar from "@/components/Navbar";
 import Dashboard from "@/components/Dashboard";
+import AdminDashboard from "@/components/AdminDashboard";
 import { useUser } from "@/context/UserContext";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
@@ -55,6 +56,7 @@ const Index = () => {
           <div className="flex items-center gap-2">
             <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
               {currentUser?.nickname || currentUser?.username}님 
+              {currentUser?.isAdmin && <span className="ml-1 text-blue-600 dark:text-blue-400">(관리자)</span>}
             </div>
             <Button 
               variant="outline" 
@@ -67,7 +69,12 @@ const Index = () => {
             </Button>
           </div>
         </div>
-        <Dashboard />
+        
+        {currentUser?.isAdmin ? (
+          <AdminDashboard />
+        ) : (
+          <Dashboard />
+        )}
       </div>
     </div>
   );

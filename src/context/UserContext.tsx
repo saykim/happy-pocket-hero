@@ -7,6 +7,7 @@ type User = {
   id: string;
   username: string;
   nickname: string;
+  isAdmin?: boolean; // Add isAdmin flag
 };
 
 type UserContextType = {
@@ -46,13 +47,20 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         
         if (data && data.length > 0) {
           console.log('Users fetched successfully:', data.length);
-          setUsers(data);
+          
+          // Check for admin account and mark it with isAdmin flag
+          const usersWithAdminFlag = data.map(user => ({
+            ...user,
+            isAdmin: user.username === 'admin'
+          }));
+          
+          setUsers(usersWithAdminFlag);
           
           // Check if we have a stored username in localStorage
           const storedUsername = localStorage.getItem('currentUsername');
           if (storedUsername) {
             console.log('Found stored username:', storedUsername);
-            const foundUser = data.find(user => user.username === storedUsername);
+            const foundUser = usersWithAdminFlag.find(user => user.username === storedUsername);
             if (foundUser) {
               console.log('Setting current user from stored username');
               setCurrentUser(foundUser);
@@ -98,7 +106,13 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log('User found:', data);
-      setCurrentUser(data);
+      // Add isAdmin flag to user
+      const userWithAdminFlag = {
+        ...data,
+        isAdmin: username === 'admin'
+      };
+      
+      setCurrentUser(userWithAdminFlag);
       localStorage.setItem('currentUsername', username);
     } catch (error) {
       console.error('Unexpected error switching user:', error);
