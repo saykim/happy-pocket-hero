@@ -1,10 +1,10 @@
-
 import { useState, useEffect } from 'react';
-import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { cn, updateUserBadgeProgress } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 type Task = {
   id: string;
@@ -14,14 +14,52 @@ type Task = {
   points: number;
 };
 
+// 일별 점수 타입 정의
+type DailyScore = {
+  date: string;
+  totalPoints: number;
+  tasks: Task[];
+};
+
 const TaskList = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showInput, setShowInput] = useState(false);
   const [totalPoints, setTotalPoints] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [showDailyScores, setShowDailyScores] = useState(false);
+  const [dailyScores, setDailyScores] = useState<DailyScore[]>([]);
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // 할일을 일별로 그룹화하는 함수
+  const groupTasksByDate = (tasks: Task[]) => {
+    const grouped: { [key: string]: Task[] } = {};
+    
+    tasks.forEach(task => {
+      // 날짜만 추출 (YYYY-MM-DD 형식)
+      const dateKey = task.createdAt.split('T')[0];
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      
+      grouped[dateKey].push(task);
+    });
+    
+    // DailyScore 배열로 변환
+    return Object.entries(grouped).map(([date, tasks]) => {
+      const completedTasks = tasks.filter(task => task.completed);
+      const totalPoints = completedTasks.reduce((sum, task) => sum + task.points, 0);
+      
+      return {
+        date,
+        totalPoints,
+        tasks
+      };
+    }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // 최신 날짜순 정렬
+  };
 
   // Fetch tasks when component mounts or when user changes
   useEffect(() => {
@@ -56,6 +94,9 @@ const TaskList = () => {
         }));
         
         setTasks(formattedTasks);
+        
+        // 일별 점수 계산
+        setDailyScores(groupTasksByDate(formattedTasks));
         
         // Calculate total points from completed tasks
         const completedPoints = formattedTasks
@@ -114,7 +155,9 @@ const TaskList = () => {
         points: data.reward,
       };
       
-      setTasks([newTask, ...tasks]);
+      const updatedTasks = [newTask, ...tasks];
+      setTasks(updatedTasks);
+      setDailyScores(groupTasksByDate(updatedTasks));
       setNewTaskTitle('');
       setShowInput(false);
       
@@ -132,6 +175,7 @@ const TaskList = () => {
     if (!taskToUpdate || !currentUser) return;
     
     const newStatus = taskToUpdate.completed ? 'todo' : 'completed';
+    const beingCompleted = !taskToUpdate.completed; // 미완료 -> 완료로 변경되는 경우
     
     try {
       const { error } = await supabase
@@ -151,23 +195,62 @@ const TaskList = () => {
       }
       
       // Update local state
-      setTasks(
-        tasks.map((task) => {
-          if (task.id === taskId) {
-            const newCompletedState = !task.completed;
-            
-            // Update total points
-            if (newCompletedState) {
-              setTotalPoints(prev => prev + task.points);
-            } else {
-              setTotalPoints(prev => prev - task.points);
-            }
-            
-            return { ...task, completed: newCompletedState };
+      const updatedTasks = tasks.map((task) => {
+        if (task.id === taskId) {
+          const newCompletedState = !task.completed;
+          
+          // Update total points
+          if (newCompletedState) {
+            setTotalPoints(prev => prev + task.points);
+          } else {
+            setTotalPoints(prev => prev - task.points);
           }
-          return task;
-        })
-      );
+          
+          return { ...task, completed: newCompletedState };
+        }
+        return task;
+      });
+      
+      setTasks(updatedTasks);
+      setDailyScores(groupTasksByDate(updatedTasks));
+      
+      // 할일이 완료 상태로 변경된 경우에만 배지 업데이트
+      if (beingCompleted) {
+        try {
+          console.log("🏆 할일 완료 감지! 배지 업데이트 중...");
+          const tasksResult = await updateUserBadgeProgress(currentUser.id, 'tasks');
+          console.log("할일 배지 업데이트 결과:", tasksResult);
+          
+          // 모든 태스크가 완료되었는지 확인
+          const allTasksCompleted = updatedTasks.every(t => t.completed);
+          
+          if (allTasksCompleted) {
+            console.log("🎯 모든 할일 완료! 추가 배지 업데이트 중...");
+            // 추가 배지 부여 (모든 할일 완료)
+            const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity', 3);
+            console.log("활동 배지 업데이트 결과:", activityResult);
+            
+            // 특별 토스트 메시지 표시
+            toast({
+              title: '축하합니다!',
+              description: '모든 할일을 완료했습니다. 배지를 확인해보세요!',
+              variant: 'default',
+              action: (
+                <div className="cursor-pointer" onClick={() => window.location.href = "/badges"}>
+                  배지 확인
+                </div>
+              ),
+            });
+          }
+          
+          // 배지 데이터 새로고침
+          await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
+          console.log("배지 데이터 새로고침 완료");
+          
+        } catch (badgeError) {
+          console.error('배지 업데이트 중 오류:', badgeError);
+        }
+      }
       
       toast({
         title: '성공',
@@ -207,7 +290,9 @@ const TaskList = () => {
       }
       
       // Remove from local state
-      setTasks(tasks.filter((task) => task.id !== taskId));
+      const updatedTasks = tasks.filter((task) => task.id !== taskId);
+      setTasks(updatedTasks);
+      setDailyScores(groupTasksByDate(updatedTasks));
       
       toast({
         title: '성공',
@@ -216,6 +301,17 @@ const TaskList = () => {
     } catch (error) {
       console.error('Unexpected error deleting task:', error);
     }
+  };
+
+  // 날짜 포맷 함수
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('ko-KR', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      weekday: 'long'
+    });
   };
 
   return (
@@ -232,19 +328,96 @@ const TaskList = () => {
         </div>
       </div>
 
-      {/* Tasks header with add button */}
+      {/* 일별 달성 점수 토글 버튼 */}
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold flex items-center">
           <ListTodo className="mr-2 text-blue-500" />
           할 일
         </h2>
-        <button
-          onClick={() => setShowInput(true)}
-          className="candy-button bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
-        >
-          할 일 추가
-        </button>
+        <div className="flex space-x-2">
+          <button
+            onClick={() => setShowDailyScores(!showDailyScores)}
+            className={cn(
+              "candy-button flex items-center",
+              showDailyScores 
+                ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            )}
+          >
+            <Calendar size={16} className="mr-1" />
+            {showDailyScores ? "일별 점수 숨기기" : "일별 점수 보기"}
+            {showDailyScores ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
+          </button>
+          <button
+            onClick={() => setShowInput(true)}
+            className="candy-button bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+          >
+            할 일 추가
+          </button>
+        </div>
       </div>
+
+      {/* 일별 달성 점수 표시 */}
+      {showDailyScores && (
+        <div className="candy-card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 animate-fade-in">
+          <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-300">일별 달성 점수</h3>
+          
+          {dailyScores.length === 0 ? (
+            <p className="text-center text-gray-500 dark:text-gray-400 py-4">데이터가 없습니다</p>
+          ) : (
+            <div className="space-y-4">
+              {dailyScores.map(dailyScore => (
+                <div 
+                  key={dailyScore.date}
+                  className="border border-purple-100 dark:border-purple-800 rounded-lg p-4 bg-white dark:bg-gray-800/30"
+                >
+                  <div className="flex justify-between items-center mb-2">
+                    <div className="flex items-center">
+                      <Calendar size={16} className="mr-2 text-purple-500" />
+                      <h4 className="font-medium text-purple-800 dark:text-purple-300">
+                        {formatDate(dailyScore.date)}
+                      </h4>
+                    </div>
+                    <div className="flex items-center bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
+                      <StarIcon size={14} className="mr-1 text-yellow-500" />
+                      <span className="font-bold text-purple-800 dark:text-purple-300">{dailyScore.totalPoints}</span>
+                      <span className="ml-1 text-xs text-purple-600 dark:text-purple-400">점</span>
+                    </div>
+                  </div>
+                  
+                  <div className="pl-2 border-l-2 border-purple-200 dark:border-purple-700 mt-3 space-y-2">
+                    {dailyScore.tasks.filter(task => task.completed).map(task => (
+                      <div key={task.id} className="flex justify-between items-center text-sm">
+                        <span className="flex items-center text-gray-700 dark:text-gray-300">
+                          <CheckCircle size={14} className="mr-1.5 text-green-500" />
+                          {task.title}
+                        </span>
+                        <span className="flex items-center text-amber-700 dark:text-amber-400 font-medium">
+                          <StarIcon size={12} className="mr-0.5 text-yellow-500" />
+                          {task.points}점
+                        </span>
+                      </div>
+                    ))}
+                    
+                    {dailyScore.tasks.filter(task => !task.completed).map(task => (
+                      <div key={task.id} className="flex justify-between items-center text-sm opacity-50">
+                        <span className="flex items-center text-gray-500 dark:text-gray-400">
+                          <Circle size={14} className="mr-1.5" />
+                          {task.title}
+                        </span>
+                        <span className="flex items-center text-gray-500 dark:text-gray-400">
+                          <StarIcon size={12} className="mr-0.5 text-gray-400" />
+                          {task.points}점
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add task input */}
       {showInput && (
@@ -293,7 +466,7 @@ const TaskList = () => {
               key={task.id}
               className={cn(
                 "candy-card p-4 flex items-center justify-between transition-all",
-                task.completed ? "bg-gray-50 opacity-75" : "bg-white"
+                task.completed ? "bg-gray-50 dark:bg-gray-800/30 opacity-75" : "bg-white dark:bg-gray-800"
               )}
             >
               <div className="flex items-center flex-1 min-w-0">

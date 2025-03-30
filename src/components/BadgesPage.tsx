@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Award, BadgeCheck, BadgeX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -158,24 +157,24 @@ const BadgesPage = () => {
       </Tabs>
       
       {/* Achievements explanation */}
-      <div className="candy-card bg-gradient-to-r from-gray-50 to-gray-100">
-        <h3 className="font-bold mb-2">배지를 얻는 방법</h3>
+      <div className="candy-card bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
+        <h3 className="font-bold mb-2 dark:text-gray-100">배지를 얻는 방법</h3>
         <ul className="space-y-2 text-sm">
           <li className="flex items-start">
             <BadgeCheck className="text-green-500 mr-2 flex-shrink-0 mt-0.5" size={16} />
-            <span>저축 목표에 돈을 추가하거나 목표를 달성하세요.</span>
+            <span className="dark:text-gray-300">저축 목표에 돈을 추가하거나 목표를 달성하세요.</span>
           </li>
           <li className="flex items-start">
             <BadgeCheck className="text-green-500 mr-2 flex-shrink-0 mt-0.5" size={16} />
-            <span>할일 목록에서 작업을 완료하세요.</span>
+            <span className="dark:text-gray-300">할일 목록에서 작업을 완료하세요.</span>
           </li>
           <li className="flex items-start">
             <BadgeCheck className="text-green-500 mr-2 flex-shrink-0 mt-0.5" size={16} />
-            <span>용돈 내역을 꾸준히 기록하세요.</span>
+            <span className="dark:text-gray-300">용돈 내역을 꾸준히 기록하세요.</span>
           </li>
           <li className="flex items-start">
             <BadgeCheck className="text-green-500 mr-2 flex-shrink-0 mt-0.5" size={16} />
-            <span>매일 앱에 접속하여 기록 스트릭을 유지하세요.</span>
+            <span className="dark:text-gray-300">매일 앱에 접속하여 기록 스트릭을 유지하세요.</span>
           </li>
         </ul>
       </div>

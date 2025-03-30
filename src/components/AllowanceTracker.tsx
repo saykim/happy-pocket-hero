@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { PlusCircle, MinusCircle, CalendarIcon, Wallet, Coins, Trash2 } from "lucide-react";
 import AnimatedNumber from "./ui/AnimatedNumber";
 import CategoryIcon, { CategoryType } from "./CategoryIcon";
-import { cn } from "@/lib/utils";
+import { cn, updateUserBadgeProgress } from "@/lib/utils";
 import { Button } from "./ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useUser } from "@/context/UserContext";
@@ -21,6 +21,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useQueryClient } from '@tanstack/react-query';
 
 // Types for our transactions
 type Transaction = {
@@ -35,6 +36,7 @@ type Transaction = {
 const AllowanceTracker = () => {
   const { currentUser } = useUser();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [balance, setBalance] = useState(5000);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -136,6 +138,11 @@ const AllowanceTracker = () => {
       
       if (error) {
         console.error("Error saving transaction:", error);
+        toast({
+          title: "저장 실패",
+          description: "거래 내역을 저장하는데 문제가 발생했습니다.",
+          variant: "destructive",
+        });
         return;
       }
       
@@ -158,9 +165,47 @@ const AllowanceTracker = () => {
         } else {
           setBalance(prev => prev - amount);
         }
+        
+        // 거래 내역 추가에 대한 배지 업데이트
+        try {
+          console.log(`💰 거래 내역 추가 감지: 유형=${transactionType}, 금액=${amount}원`);
+          
+          // 'expenses' 카테고리 배지 업데이트 (모든 거래 내역)
+          const expensesResult = await updateUserBadgeProgress(currentUser.id, 'expenses');
+          console.log("거래 내역 배지 업데이트 결과:", expensesResult);
+          
+          // 첫 번째 거래인 경우 활동 배지 추가
+          if (transactions.length === 0) {
+            console.log("🌟 첫 거래 감지! 활동 배지 업데이트 중...");
+            const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity');
+            console.log("활동 배지 업데이트 결과:", activityResult);
+          }
+          
+          // 배지 데이터 새로고침
+          await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
+          console.log("배지 데이터 새로고침 완료");
+          
+          toast({
+            title: "저장 완료",
+            description: "거래 내역이 저장되었습니다.",
+          });
+        } catch (badgeError) {
+          console.error("배지 업데이트 중 오류:", badgeError);
+          
+          // 배지 업데이트 실패해도 거래 내역은 저장됨을 알림
+          toast({
+            title: "저장 완료",
+            description: "거래 내역이 저장되었지만, 배지 업데이트에 실패했습니다.",
+          });
+        }
       }
     } catch (error) {
       console.error("Failed to save transaction:", error);
+      toast({
+        title: "저장 실패",
+        description: "거래 내역을 저장하는데 문제가 발생했습니다.",
+        variant: "destructive",
+      });
     } finally {
       // Reset form
       setAmount(0);
