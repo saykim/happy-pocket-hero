@@ -1,11 +1,23 @@
 
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import { Home, PiggyBank, Target, ListTodo, Award } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const Navbar = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("home");
+
+  // Update active tab based on current URL path
+  useEffect(() => {
+    const path = location.pathname;
+    if (path === "/") {
+      setActiveTab("home");
+    } else {
+      const tab = path.split("/")[1];
+      if (tab) setActiveTab(tab);
+    }
+  }, [location]);
 
   const navItems = [
     { id: "home", label: "홈", icon: Home },
@@ -29,7 +41,6 @@ const Navbar = () => {
                   ? "text-primary scale-110"
                   : "text-gray-400 hover:text-gray-600"
               )}
-              onClick={() => setActiveTab(item.id)}
             >
               <item.icon
                 className={cn(

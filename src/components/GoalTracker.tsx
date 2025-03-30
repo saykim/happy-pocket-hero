@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Target, CheckCircle2, ChevronRight, PiggyBank, Plus, Minus } from 'lucide-react';
+import { Target, CheckCircle2, PiggyBank, Plus, Minus, Pencil, Trash2 } from 'lucide-react';
 import AnimatedNumber from './ui/AnimatedNumber';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
@@ -9,6 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Progress } from './ui/progress';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from './ui/alert-dialog';
 
 // Define the Goal type
 type Goal = {
@@ -24,14 +24,25 @@ const GoalTracker = () => {
   const { currentUser } = useUser();
   const queryClient = useQueryClient();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showEditForm, setShowEditForm] = useState<string | null>(null);
+  const [showSavingsForm, setShowSavingsForm] = useState<string | null>(null);
+  const [savingAmount, setSavingAmount] = useState(1000);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  
   const [newGoal, setNewGoal] = useState({
     title: '',
     targetAmount: '',
     currentAmount: '0',
     deadline: '',
   });
-  const [showSavingsForm, setShowSavingsForm] = useState<string | null>(null);
-  const [savingAmount, setSavingAmount] = useState(1000);
+  
+  const [editGoal, setEditGoal] = useState({
+    id: '',
+    title: '',
+    targetAmount: '',
+    currentAmount: '',
+    deadline: '',
+  });
 
   // Define saving amount options
   const savingAmountOptions = [500, 1000, 5000, 10000, 50000];
@@ -93,6 +104,57 @@ const GoalTracker = () => {
     }
   });
 
+  // Edit a goal mutation
+  const editGoalMutation = useMutation({
+    mutationFn: async (goalData: any) => {
+      const { data, error } = await supabase
+        .from('goals')
+        .update({
+          title: goalData.title,
+          target_amount: parseInt(goalData.targetAmount),
+          current_amount: parseInt(goalData.currentAmount),
+          deadline: goalData.deadline || null,
+        })
+        .eq('id', goalData.id)
+        .select();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals', currentUser?.id] });
+      toast.success('목표가 수정되었습니다!');
+      setEditGoal({ id: '', title: '', targetAmount: '', currentAmount: '', deadline: '' });
+      setShowEditForm(null);
+    },
+    onError: (error) => {
+      console.error('Error editing goal:', error);
+      toast.error('목표 수정 중 오류가 발생했습니다');
+    }
+  });
+
+  // Delete a goal mutation
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      const { error } = await supabase
+        .from('goals')
+        .delete()
+        .eq('id', goalId);
+      
+      if (error) throw error;
+      return { goalId };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals', currentUser?.id] });
+      toast.success('목표가 삭제되었습니다!');
+      setShowDeleteConfirm(null);
+    },
+    onError: (error) => {
+      console.error('Error deleting goal:', error);
+      toast.error('목표 삭제 중 오류가 발생했습니다');
+    }
+  });
+
   // Update goal (add to savings) mutation
   const updateGoalMutation = useMutation({
     mutationFn: async ({ goalId, amount }: { goalId: string, amount: number }) => {
@@ -136,8 +198,31 @@ const GoalTracker = () => {
     addGoalMutation.mutate(newGoal);
   };
 
+  const handleEditGoal = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!editGoal.title || !editGoal.targetAmount) return;
+    
+    editGoalMutation.mutate(editGoal);
+  };
+
+  const handleDeleteGoal = (goalId: string) => {
+    deleteGoalMutation.mutate(goalId);
+  };
+
   const handleAddToGoal = (goalId: string) => {
     updateGoalMutation.mutate({ goalId, amount: savingAmount });
+  };
+
+  const startEditing = (goal: Goal) => {
+    setEditGoal({
+      id: goal.id,
+      title: goal.title,
+      targetAmount: goal.targetAmount.toString(),
+      currentAmount: goal.currentAmount.toString(),
+      deadline: goal.deadline || '',
+    });
+    setShowEditForm(goal.id);
   };
 
   return (
@@ -240,6 +325,111 @@ const GoalTracker = () => {
         </div>
       )}
 
+      {/* Edit Goal Form */}
+      {showEditForm && (
+        <div className="candy-card animate-scale-up">
+          <h3 className="text-lg font-semibold mb-4">목표 수정하기</h3>
+          <form onSubmit={handleEditGoal} className="space-y-4">
+            <div>
+              <label htmlFor="editGoalTitle" className="block mb-1 text-sm font-medium text-gray-700">
+                목표 이름
+              </label>
+              <input
+                id="editGoalTitle"
+                type="text"
+                value={editGoal.title}
+                onChange={(e) => setEditGoal({ ...editGoal, title: e.target.value })}
+                placeholder="무엇을 위해 모을건가요?"
+                className="candy-input w-full"
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="editTargetAmount" className="block mb-1 text-sm font-medium text-gray-700">
+                목표 금액
+              </label>
+              <div className="relative">
+                <input
+                  id="editTargetAmount"
+                  type="number"
+                  value={editGoal.targetAmount}
+                  onChange={(e) => setEditGoal({ ...editGoal, targetAmount: e.target.value })}
+                  placeholder="0"
+                  className="candy-input w-full pl-7"
+                  required
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₩</span>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="editCurrentAmount" className="block mb-1 text-sm font-medium text-gray-700">
+                현재 모은 금액
+              </label>
+              <div className="relative">
+                <input
+                  id="editCurrentAmount"
+                  type="number"
+                  value={editGoal.currentAmount}
+                  onChange={(e) => setEditGoal({ ...editGoal, currentAmount: e.target.value })}
+                  placeholder="0"
+                  className="candy-input w-full pl-7"
+                />
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₩</span>
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="editDeadline" className="block mb-1 text-sm font-medium text-gray-700">
+                목표일 (선택)
+              </label>
+              <input
+                id="editDeadline"
+                type="date"
+                value={editGoal.deadline}
+                onChange={(e) => setEditGoal({ ...editGoal, deadline: e.target.value })}
+                className="candy-input w-full"
+              />
+            </div>
+
+            <div className="flex space-x-3">
+              <button
+                type="button"
+                onClick={() => setShowEditForm(null)}
+                className="candy-button flex-1 bg-gray-200 text-gray-700 hover:bg-gray-300"
+              >
+                취소
+              </button>
+              <button type="submit" className="candy-button flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
+                목표 수정하기
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!showDeleteConfirm} onOpenChange={(open) => !open && setShowDeleteConfirm(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정말로 이 목표를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 목표와 관련된 모든 데이터가 영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => showDeleteConfirm && handleDeleteGoal(showDeleteConfirm)}
+              className="bg-red-500 hover:bg-red-600"
+            >
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Goals List */}
       {isLoading ? (
         <div className="text-center py-10">
@@ -274,23 +464,43 @@ const GoalTracker = () => {
                   {goal.completed && <CheckCircle2 size={18} className="mr-1 text-green-500" />}
                   {goal.title}
                 </h3>
-                {showSavingsForm === goal.id ? (
-                  <button 
-                    className="candy-button px-3 py-1 bg-red-100 text-red-600"
-                    onClick={() => setShowSavingsForm(null)}
-                  >
-                    취소
-                  </button>
-                ) : (
-                  <button 
-                    className="candy-button px-3 py-1 bg-candy-yellow text-amber-700"
-                    onClick={() => setShowSavingsForm(goal.id)}
-                  >
-                    <span className="flex items-center">
-                      <PiggyBank size={16} className="mr-1" /> 저금하기
-                    </span>
-                  </button>
-                )}
+                <div className="flex space-x-2">
+                  {showSavingsForm === goal.id ? (
+                    <button 
+                      className="candy-button px-3 py-1 bg-red-100 text-red-600"
+                      onClick={() => setShowSavingsForm(null)}
+                    >
+                      취소
+                    </button>
+                  ) : (
+                    <>
+                      <button 
+                        className="candy-button px-3 py-1 bg-candy-yellow text-amber-700"
+                        onClick={() => setShowSavingsForm(goal.id)}
+                      >
+                        <span className="flex items-center">
+                          <PiggyBank size={16} className="mr-1" /> 저금
+                        </span>
+                      </button>
+                      <button 
+                        className="candy-button px-3 py-1 bg-blue-100 text-blue-600"
+                        onClick={() => startEditing(goal)}
+                      >
+                        <span className="flex items-center">
+                          <Pencil size={16} className="mr-1" /> 수정
+                        </span>
+                      </button>
+                      <button 
+                        className="candy-button px-3 py-1 bg-red-100 text-red-600"
+                        onClick={() => setShowDeleteConfirm(goal.id)}
+                      >
+                        <span className="flex items-center">
+                          <Trash2 size={16} className="mr-1" /> 삭제
+                        </span>
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Savings amount form */}
