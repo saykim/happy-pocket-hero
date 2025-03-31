@@ -29,10 +29,12 @@ const BadgesPage = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   
   // Fetch badges from Supabase using a custom type-safe approach
-  const { data: badges = [], isLoading } = useQuery({
+  const { data: badges = [], isLoading, refetch } = useQuery({
     queryKey: ['badges', currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return [];
+      
+      console.log('🏆 배지 데이터 로딩 시작...');
       
       // Get all badges with explicit typing for the response
       const { data: allBadges, error: badgesError } = await supabase
@@ -43,6 +45,8 @@ const BadgesPage = () => {
         console.error('Error fetching badges:', badgesError);
         return [];
       }
+      
+      console.log(`📊 총 ${allBadges?.length || 0}개의 배지 정보 로드됨`);
       
       // Get user's badge progress with explicit typing
       const { data: userBadges, error: userBadgesError } = await supabase
@@ -55,9 +59,14 @@ const BadgesPage = () => {
         return [];
       }
       
+      console.log(`👤 사용자의 ${userBadges?.length || 0}개 배지 진행 상황 로드됨`);
+      
       // Combine the data with proper type checking
-      return allBadges.map(badge => {
+      const result = allBadges.map(badge => {
         const userBadge = userBadges?.find(ub => ub.badge_id === badge.id);
+        const progress = userBadge?.progress || 0;
+        const completed = userBadge?.completed || false;
+        
         return {
           id: badge.id,
           name: badge.name,
@@ -65,13 +74,28 @@ const BadgesPage = () => {
           icon: badge.icon,
           required_count: badge.required_count,
           category: badge.category,
-          progress: userBadge?.progress || 0,
-          completed: userBadge?.completed || false
+          progress: progress,
+          completed: completed
         } as BadgeType;
       });
+      
+      const completedCount = result.filter(b => b.completed).length;
+      console.log(`✅ 완료된 배지: ${completedCount}/${result.length} (${Math.round((completedCount / result.length) * 100)}%)`);
+      
+      return result;
     },
-    enabled: !!currentUser
+    enabled: !!currentUser,
+    staleTime: 30 * 1000, // 30초 동안 캐시 데이터 사용
+    refetchInterval: 60 * 1000, // 60초마다 자동 갱신
+    refetchOnWindowFocus: true // 탭 포커스 시 갱신
   });
+  
+  // 페이지가 처음 로드될 때와 activeCategory가 변경될 때 강제 갱신
+  useEffect(() => {
+    if (currentUser) {
+      refetch();
+    }
+  }, [activeCategory, currentUser, refetch]);
   
   // Filter badges by category
   const filteredBadges = badges.filter(badge => 
