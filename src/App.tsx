@@ -1,13 +1,13 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import HomePage from '@/pages/HomePage';
-import LoginPage from '@/pages/LoginPage';
-import RegisterPage from '@/pages/RegisterPage';
+import Index from '@/pages/Index';
+import SignIn from '@/pages/SignIn';
+import NotFound from '@/pages/NotFound';
 import { UserProvider } from '@/context/UserContext';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
-import BadgesPage from '@/pages/BadgesPage';
+import BadgesPage from '@/components/BadgesPage';
 import { resetBadgeProgress, debugBadgeProgress } from '@/lib/utils';
 
 // Create a client
@@ -31,11 +31,11 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={<Layout />}>
-              <Route index element={<HomePage />} />
+              <Route index element={<Index />} />
               <Route path="badges" element={<BadgesPage />} />
             </Route>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/signin" element={<SignIn />} />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </Router>
         <Toaster richColors closeButton position="top-center" />
