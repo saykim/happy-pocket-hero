@@ -198,7 +198,8 @@ const GoalTracker = () => {
       }
       
       try {
-        console.log(`저금 수행: ${variables.amount}원 추가됨`);
+        console.log(`저금 수행: ${variables.amount}원 추가됨`, { result });
+        console.log(`목표 완료 상태: 이전=${!result.becameCompleted}, 현재=${result.isNowCompleted}, 방금완료됨=${result.becameCompleted}`);
         
         // 1. 저금 액션에 대한 배지 업데이트 (저금할 때마다)
         const savingsResult = await updateUserBadgeProgress(currentUser.id, 'savings');
@@ -206,24 +207,42 @@ const GoalTracker = () => {
         
         // 2. 목표가 완료된 경우 추가 배지 업데이트
         if (result.becameCompleted) {
-          console.log("🎯 목표 달성 감지됨! 목표 배지 업데이트 중...");
-          const goalsResult = await updateUserBadgeProgress(currentUser.id, 'goals');
+          console.log("🎯 목표 달성 감지됨! 목표 배지 업데이트 중...", { goalId: variables.goalId });
+          // goals 카테고리 배지 진행도를 2로 설정 (더 확실하게 증가시킴)
+          const goalsResult = await updateUserBadgeProgress(currentUser.id, 'goals', 2);
           console.log("목표 배지 업데이트 결과:", goalsResult);
           
-          toast.success('🎉 목표를 달성했습니다! 새로운 배지를 확인해보세요!', {
-            duration: 5000,
-            action: {
-              label: "배지 확인",
-              onClick: () => window.location.href = "/badges"
-            }
-          });
+          // 배지 획득 확인
+          if (goalsResult.updatedBadges && goalsResult.updatedBadges.length > 0) {
+            const badgeNames = goalsResult.updatedBadges.map(b => b.name).join(', ');
+            toast.success(`🎉 목표 달성! '${badgeNames}' 배지를 획득했습니다!`, {
+              duration: 5000,
+              action: {
+                label: "배지 확인",
+                onClick: () => window.location.href = "/badges"
+              }
+            });
+          } else {
+            toast.success('🎉 목표를 달성했습니다! 새로운 배지를 확인해보세요!', {
+              duration: 5000,
+              action: {
+                label: "배지 확인",
+                onClick: () => window.location.href = "/badges"
+              }
+            });
+          }
+          
+          // 목표 완료 시 강제로 배지 데이터 새로고침
+          await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
+          await queryClient.refetchQueries({ queryKey: ['badges', currentUser.id] });
+          console.log("목표 달성 - 배지 데이터 강제 새로고침 완료");
         } else {
           toast.success('저금이 완료되었습니다!');
         }
         
         // 배지 데이터 갱신
         await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
-        console.log("배지 데이터 새로고침 완료");
+        console.log("배지 데이터 새로고침 요청 완료");
         
       } catch (error) {
         console.error("배지 업데이트 중 오류 발생:", error);
