@@ -1,46 +1,20 @@
 
 import { useState, useEffect } from 'react';
-import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, Settings, FilterIcon } from 'lucide-react';
-import { cn, updateUserBadgeProgress } from '@/lib/utils';
+import { ListTodo, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, FilterIcon } from 'lucide-react';
+import { updateUserBadgeProgress } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-
-type Task = {
-  id: string;
-  title: string;
-  completed: boolean;
-  createdAt: string;
-  recurrence: string;
-};
-
-// 일별 할일 타입 정의
-type DailyTasks = {
-  date: string;
-  completedCount: number;
-  tasks: Task[];
-};
+import { Task, TaskItem } from './tasks/TaskItem';
+import { TaskForm } from './tasks/TaskForm';
+import { DailyTaskView, DailyTasks } from './tasks/DailyTaskView';
+import { EmptyTaskState } from './tasks/EmptyTaskState';
+import { TaskStats } from './tasks/TaskStats';
 
 const TaskList = () => {
-  const [showInput, setShowInput] = useState(false);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskRecurrence, setNewTaskRecurrence] = useState('one-time');
   const [showDailyTasks, setShowDailyTasks] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { currentUser } = useUser();
@@ -139,10 +113,6 @@ const TaskList = () => {
     onSuccess: (data) => {
       // Add the new task to cache
       queryClient.invalidateQueries({ queryKey: ['tasks', currentUser?.id] });
-      
-      setNewTaskTitle('');
-      setNewTaskRecurrence('one-time');
-      setShowInput(false);
       
       toast({
         title: '성공',
@@ -271,40 +241,20 @@ const TaskList = () => {
     }
   });
 
-  const handleAddTask = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTaskTitle.trim() || !currentUser) return;
-    
-    addTaskMutation.mutate({ 
-      title: newTaskTitle,
-      recurrence: newTaskRecurrence
-    });
+  const handleAddTask = (title: string, recurrence: string) => {
+    if (!title.trim() || !currentUser) return;
+    addTaskMutation.mutate({ title, recurrence });
   };
 
   const toggleTaskCompletion = (taskId: string) => {
     const taskToUpdate = tasks.find(task => task.id === taskId);
     if (!taskToUpdate || !currentUser) return;
-    
-    toggleTaskMutation.mutate({ 
-      taskId, 
-      completed: !taskToUpdate.completed 
-    });
+    toggleTaskMutation.mutate({ taskId, completed: !taskToUpdate.completed });
   };
 
   const deleteTask = (taskId: string) => {
     if (!currentUser) return;
     deleteTaskMutation.mutate(taskId);
-  };
-
-  // 날짜 포맷 함수
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('ko-KR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long'
-    });
   };
 
   // Get tasks based on active tab
@@ -319,33 +269,10 @@ const TaskList = () => {
     }
   };
 
-  // Get recurrence badge text
-  const getRecurrenceBadge = (recurrence: string) => {
-    switch (recurrence) {
-      case 'daily':
-        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">매일</Badge>;
-      case 'weekly':
-        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">매주</Badge>;
-      case 'monthly':
-        return <Badge variant="outline" className="bg-pink-100 text-pink-800 border-pink-200">매월</Badge>;
-      default:
-        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">일회성</Badge>;
-    }
-  };
-
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Header with completed tasks count */}
-      <div className="candy-card bg-gradient-to-br from-amber-100 to-amber-200 overflow-hidden">
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-amber-800">완료한 할 일</h3>
-          <div className="flex items-center text-amber-800">
-            <CheckCircle className="mr-1 text-green-500" size={20} />
-            <span className="text-2xl font-bold">{totalCompletedTasks}</span>
-            <span className="ml-1 text-sm">개</span>
-          </div>
-        </div>
-      </div>
+      {/* 완료한 할일 통계 */}
+      <TaskStats completedCount={totalCompletedTasks} />
 
       {/* 할일 헤더와 탭 */}
       <div className="flex flex-col space-y-4">
@@ -355,92 +282,17 @@ const TaskList = () => {
             할 일
           </h2>
           <div className="flex space-x-2">
-            <button
+            <Button
               onClick={() => setShowDailyTasks(!showDailyTasks)}
-              className={cn(
-                "candy-button flex items-center",
-                showDailyTasks 
-                  ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              )}
+              variant="outline"
+              size="sm"
+              className="candy-button flex items-center"
             >
               <Calendar size={16} className="mr-1" />
               {showDailyTasks ? "일별 현황 숨기기" : "일별 현황 보기"}
               {showDailyTasks ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
-            </button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="candy-button bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
-                  <Plus size={16} className="mr-1" />
-                  할 일 추가
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>새로운 할 일 추가</DialogTitle>
-                  <DialogDescription>
-                    할 일의 제목과 반복 주기를 입력하세요.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddTask}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="task-title">할 일 제목</Label>
-                      <Input
-                        id="task-title"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="새로운 할 일을 입력하세요..."
-                        className="candy-input"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="task-recurrence">반복 주기</Label>
-                      <Select
-                        value={newTaskRecurrence}
-                        onValueChange={setNewTaskRecurrence}
-                      >
-                        <SelectTrigger id="task-recurrence">
-                          <SelectValue placeholder="반복 주기를 선택하세요" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="one-time">
-                            <div className="flex items-center">
-                              <ClockIcon size={16} className="mr-2 text-gray-500" />
-                              일회성
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="daily">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-blue-500" />
-                              매일
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="weekly">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-purple-500" />
-                              매주
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="monthly">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-pink-500" />
-                              매월
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" disabled={!newTaskTitle.trim()}>
-                      추가하기
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            </Button>
+            <TaskForm onAddTask={handleAddTask} />
           </div>
         </div>
 
@@ -464,58 +316,7 @@ const TaskList = () => {
       </div>
 
       {/* 일별 할일 현황 */}
-      {showDailyTasks && (
-        <div className="candy-card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 animate-fade-in">
-          <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-300">일별 완료 현황</h3>
-          
-          {dailyTasks.length === 0 ? (
-            <p className="text-center text-gray-500 dark:text-gray-400 py-4">데이터가 없습니다</p>
-          ) : (
-            <div className="space-y-4">
-              {dailyTasks.map(dailyTask => (
-                <div 
-                  key={dailyTask.date}
-                  className="border border-purple-100 dark:border-purple-800 rounded-lg p-4 bg-white dark:bg-gray-800/30"
-                >
-                  <div className="flex justify-between items-center mb-2">
-                    <div className="flex items-center">
-                      <Calendar size={16} className="mr-2 text-purple-500" />
-                      <h4 className="font-medium text-purple-800 dark:text-purple-300">
-                        {formatDate(dailyTask.date)}
-                      </h4>
-                    </div>
-                    <div className="flex items-center bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
-                      <CheckCircle size={14} className="mr-1 text-green-500" />
-                      <span className="font-bold text-purple-800 dark:text-purple-300">{dailyTask.completedCount}</span>
-                      <span className="ml-1 text-xs text-purple-600 dark:text-purple-400">개</span>
-                    </div>
-                  </div>
-                  
-                  <div className="pl-2 border-l-2 border-purple-200 dark:border-purple-700 mt-3 space-y-2">
-                    {dailyTask.tasks.filter(task => task.completed).map(task => (
-                      <div key={task.id} className="flex justify-between items-center text-sm">
-                        <span className="flex items-center text-gray-700 dark:text-gray-300">
-                          <CheckCircle size={14} className="mr-1.5 text-green-500" />
-                          {task.title}
-                        </span>
-                      </div>
-                    ))}
-                    
-                    {dailyTask.tasks.filter(task => !task.completed).map(task => (
-                      <div key={task.id} className="flex justify-between items-center text-sm opacity-50">
-                        <span className="flex items-center text-gray-500 dark:text-gray-400">
-                          <Circle size={14} className="mr-1.5" />
-                          {task.title}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {showDailyTasks && <DailyTaskView dailyTasks={dailyTasks} />}
 
       {/* Tasks list */}
       <div className="space-y-2">
@@ -525,144 +326,15 @@ const TaskList = () => {
             <p className="text-gray-500">할 일을 불러오는 중...</p>
           </div>
         ) : getFilteredTasks().length === 0 ? (
-          <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-            <ListTodo size={48} className="mx-auto mb-3 text-gray-400" />
-            <p className="text-gray-500">
-              {activeTab === 'recurring' 
-                ? '반복 할 일이 없습니다' 
-                : activeTab === 'one-time' 
-                  ? '일회성 할 일이 없습니다' 
-                  : '할 일 목록이 비어있어요'}
-            </p>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="link" className="mt-3 text-blue-500">
-                  첫 번째 할 일을 추가해 보세요!
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>새로운 할 일 추가</DialogTitle>
-                  <DialogDescription>
-                    할 일의 제목과 반복 주기를 입력하세요.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleAddTask}>
-                  <div className="grid gap-4 py-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="task-title-empty">할 일 제목</Label>
-                      <Input
-                        id="task-title-empty"
-                        value={newTaskTitle}
-                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                        placeholder="새로운 할 일을 입력하세요..."
-                        className="candy-input"
-                        autoFocus
-                      />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="task-recurrence-empty">반복 주기</Label>
-                      <Select
-                        value={newTaskRecurrence}
-                        onValueChange={setNewTaskRecurrence}
-                      >
-                        <SelectTrigger id="task-recurrence-empty">
-                          <SelectValue placeholder="반복 주기를 선택하세요" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="one-time">
-                            <div className="flex items-center">
-                              <ClockIcon size={16} className="mr-2 text-gray-500" />
-                              일회성
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="daily">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-blue-500" />
-                              매일
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="weekly">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-purple-500" />
-                              매주
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="monthly">
-                            <div className="flex items-center">
-                              <RepeatIcon size={16} className="mr-2 text-pink-500" />
-                              매월
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button type="submit" disabled={!newTaskTitle.trim()}>
-                      추가하기
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
+          <EmptyTaskState activeTab={activeTab} onAddTask={handleAddTask} />
         ) : (
           getFilteredTasks().map((task) => (
-            <div
+            <TaskItem
               key={task.id}
-              className={cn(
-                "candy-card p-4 flex items-center justify-between transition-all",
-                task.completed ? "bg-gray-50 dark:bg-gray-800/30 opacity-75" : "bg-white dark:bg-gray-800"
-              )}
-            >
-              <div className="flex items-center flex-1 min-w-0">
-                <button
-                  onClick={() => toggleTaskCompletion(task.id)}
-                  className={cn(
-                    "flex-shrink-0 mr-3 transition-all",
-                    task.completed ? "text-green-500" : "text-gray-300 hover:text-gray-400"
-                  )}
-                >
-                  {task.completed ? (
-                    <CheckCircle size={24} className="animate-scale-up" />
-                  ) : (
-                    <Circle size={24} />
-                  )}
-                </button>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-2">
-                    <p
-                      className={cn(
-                        "font-medium truncate transition-all",
-                        task.completed && "line-through text-gray-400"
-                      )}
-                    >
-                      {task.title}
-                    </p>
-                    {task.recurrence !== 'one-time' && (
-                      <div className="flex-shrink-0">
-                        {getRecurrenceBadge(task.recurrence)}
-                      </div>
-                    )}
-                  </div>
-                  <div className="text-sm flex items-center text-gray-500 mt-1">
-                    <span>
-                      {new Date(task.createdAt).toLocaleDateString('ko-KR', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              <button
-                onClick={() => deleteTask(task.id)}
-                className="ml-2 text-gray-400 hover:text-red-500 transition-colors"
-              >
-                <Trash2 size={18} />
-              </button>
-            </div>
+              task={task}
+              onToggleCompletion={toggleTaskCompletion}
+              onDelete={deleteTask}
+            />
           ))
         )}
       </div>
@@ -671,4 +343,3 @@ const TaskList = () => {
 };
 
 export default TaskList;
-
