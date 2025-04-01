@@ -10,7 +10,7 @@ export function cn(...inputs: ClassValue[]) {
 /**
  * 사용자의 배지 진행 상황을 업데이트하는 함수
  * @param userId 사용자 ID
- * @param category 배지 카테고리 (예: 'goals', 'tasks', 'savings')
+ * @param category 배지 카테고리 (예: 'goals', 'tasks', 'activity')
  * @param increment 증가시킬 값
  * @returns 업데이트 결과
  */
@@ -145,3 +145,4 @@ export async function updateUserBadgeProgress(
     return { success: false, error };
   }
 }
+

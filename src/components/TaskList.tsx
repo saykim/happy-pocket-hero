@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, Settings, FilterIcon } from 'lucide-react';
 import { cn, updateUserBadgeProgress } from '@/lib/utils';
@@ -26,14 +27,13 @@ type Task = {
   title: string;
   completed: boolean;
   createdAt: string;
-  points: number;
   recurrence: string;
 };
 
-// 일별 점수 타입 정의
-type DailyScore = {
+// 일별 할일 타입 정의
+type DailyTasks = {
   date: string;
-  totalPoints: number;
+  completedCount: number;
   tasks: Task[];
 };
 
@@ -41,7 +41,7 @@ const TaskList = () => {
   const [showInput, setShowInput] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskRecurrence, setNewTaskRecurrence] = useState('one-time');
-  const [showDailyScores, setShowDailyScores] = useState(false);
+  const [showDailyTasks, setShowDailyTasks] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const { currentUser } = useUser();
   const { toast } = useToast();
@@ -75,24 +75,21 @@ const TaskList = () => {
         title: task.title,
         completed: task.status === 'completed',
         createdAt: task.created_at,
-        points: task.reward || Math.floor(Math.random() * 50) + 30,
         recurrence: task.recurrence || 'one-time',
       }));
     },
     enabled: !!currentUser
   });
   
-  // Calculate total points
-  const totalPoints = tasks
-    .filter(task => task.completed)
-    .reduce((sum, task) => sum + task.points, 0);
+  // Calculate total completed tasks
+  const totalCompletedTasks = tasks.filter(task => task.completed).length;
   
   // Group tasks by recurrence type
   const recurringTasks = tasks.filter(task => task.recurrence !== 'one-time');
   const oneTimeTasks = tasks.filter(task => task.recurrence === 'one-time');
   
-  // Calculate daily scores
-  const dailyScores: DailyScore[] = (() => {
+  // Calculate daily tasks
+  const dailyTasks: DailyTasks[] = (() => {
     const grouped: { [key: string]: Task[] } = {};
     
     tasks.forEach(task => {
@@ -106,14 +103,13 @@ const TaskList = () => {
       grouped[dateKey].push(task);
     });
     
-    // DailyScore 배열로 변환
+    // DailyTasks 배열로 변환
     return Object.entries(grouped).map(([date, tasks]) => {
       const completedTasks = tasks.filter(task => task.completed);
-      const totalPoints = completedTasks.reduce((sum, task) => sum + task.points, 0);
       
       return {
         date,
-        totalPoints,
+        completedCount: completedTasks.length,
         tasks
       };
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // 최신 날짜순 정렬
@@ -124,15 +120,12 @@ const TaskList = () => {
     mutationFn: async (taskData: { title: string, recurrence: string }) => {
       if (!currentUser) throw new Error("User not authenticated");
       
-      const pointsValue = Math.floor(Math.random() * 50) + 30; // Random points between 30-80
-      
       const { data, error } = await supabase
         .from('tasks')
         .insert([
           {
             title: taskData.title,
             user_id: currentUser.id,
-            reward: pointsValue,
             status: 'todo',
             recurrence: taskData.recurrence
           }
@@ -342,14 +335,14 @@ const TaskList = () => {
 
   return (
     <div className="space-y-6 animate-slide-up">
-      {/* Header with points */}
+      {/* Header with completed tasks count */}
       <div className="candy-card bg-gradient-to-br from-amber-100 to-amber-200 overflow-hidden">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-amber-800">내 포인트</h3>
+          <h3 className="font-semibold text-amber-800">완료한 할 일</h3>
           <div className="flex items-center text-amber-800">
-            <StarIcon className="mr-1 text-yellow-500 animate-spin-slow" size={20} />
-            <span className="text-2xl font-bold">{totalPoints}</span>
-            <span className="ml-1 text-sm">점</span>
+            <CheckCircle className="mr-1 text-green-500" size={20} />
+            <span className="text-2xl font-bold">{totalCompletedTasks}</span>
+            <span className="ml-1 text-sm">개</span>
           </div>
         </div>
       </div>
@@ -363,17 +356,17 @@ const TaskList = () => {
           </h2>
           <div className="flex space-x-2">
             <button
-              onClick={() => setShowDailyScores(!showDailyScores)}
+              onClick={() => setShowDailyTasks(!showDailyTasks)}
               className={cn(
                 "candy-button flex items-center",
-                showDailyScores 
+                showDailyTasks 
                   ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
                   : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               )}
             >
               <Calendar size={16} className="mr-1" />
-              {showDailyScores ? "일별 점수 숨기기" : "일별 점수 보기"}
-              {showDailyScores ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
+              {showDailyTasks ? "일별 현황 숨기기" : "일별 현황 보기"}
+              {showDailyTasks ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
             </button>
             <Dialog>
               <DialogTrigger asChild>
@@ -470,57 +463,49 @@ const TaskList = () => {
         </Tabs>
       </div>
 
-      {/* 일별 달성 점수 표시 */}
-      {showDailyScores && (
+      {/* 일별 할일 현황 */}
+      {showDailyTasks && (
         <div className="candy-card bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 animate-fade-in">
-          <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-300">일별 달성 점수</h3>
+          <h3 className="text-lg font-semibold mb-4 text-purple-800 dark:text-purple-300">일별 완료 현황</h3>
           
-          {dailyScores.length === 0 ? (
+          {dailyTasks.length === 0 ? (
             <p className="text-center text-gray-500 dark:text-gray-400 py-4">데이터가 없습니다</p>
           ) : (
             <div className="space-y-4">
-              {dailyScores.map(dailyScore => (
+              {dailyTasks.map(dailyTask => (
                 <div 
-                  key={dailyScore.date}
+                  key={dailyTask.date}
                   className="border border-purple-100 dark:border-purple-800 rounded-lg p-4 bg-white dark:bg-gray-800/30"
                 >
                   <div className="flex justify-between items-center mb-2">
                     <div className="flex items-center">
                       <Calendar size={16} className="mr-2 text-purple-500" />
                       <h4 className="font-medium text-purple-800 dark:text-purple-300">
-                        {formatDate(dailyScore.date)}
+                        {formatDate(dailyTask.date)}
                       </h4>
                     </div>
                     <div className="flex items-center bg-purple-100 dark:bg-purple-900/30 px-3 py-1 rounded-full">
-                      <StarIcon size={14} className="mr-1 text-yellow-500" />
-                      <span className="font-bold text-purple-800 dark:text-purple-300">{dailyScore.totalPoints}</span>
-                      <span className="ml-1 text-xs text-purple-600 dark:text-purple-400">점</span>
+                      <CheckCircle size={14} className="mr-1 text-green-500" />
+                      <span className="font-bold text-purple-800 dark:text-purple-300">{dailyTask.completedCount}</span>
+                      <span className="ml-1 text-xs text-purple-600 dark:text-purple-400">개</span>
                     </div>
                   </div>
                   
                   <div className="pl-2 border-l-2 border-purple-200 dark:border-purple-700 mt-3 space-y-2">
-                    {dailyScore.tasks.filter(task => task.completed).map(task => (
+                    {dailyTask.tasks.filter(task => task.completed).map(task => (
                       <div key={task.id} className="flex justify-between items-center text-sm">
                         <span className="flex items-center text-gray-700 dark:text-gray-300">
                           <CheckCircle size={14} className="mr-1.5 text-green-500" />
                           {task.title}
                         </span>
-                        <span className="flex items-center text-amber-700 dark:text-amber-400 font-medium">
-                          <StarIcon size={12} className="mr-0.5 text-yellow-500" />
-                          {task.points}점
-                        </span>
                       </div>
                     ))}
                     
-                    {dailyScore.tasks.filter(task => !task.completed).map(task => (
+                    {dailyTask.tasks.filter(task => !task.completed).map(task => (
                       <div key={task.id} className="flex justify-between items-center text-sm opacity-50">
                         <span className="flex items-center text-gray-500 dark:text-gray-400">
                           <Circle size={14} className="mr-1.5" />
                           {task.title}
-                        </span>
-                        <span className="flex items-center text-gray-500 dark:text-gray-400">
-                          <StarIcon size={12} className="mr-0.5 text-gray-400" />
-                          {task.points}점
                         </span>
                       </div>
                     ))}
@@ -661,12 +646,7 @@ const TaskList = () => {
                       </div>
                     )}
                   </div>
-                  <div className="text-sm flex items-center text-gray-500 mt-1 space-x-2">
-                    <div className="flex items-center">
-                      <StarIcon size={14} className="mr-0.5 text-yellow-500" />
-                      <span>{task.points}점</span>
-                    </div>
-                    <span>•</span>
+                  <div className="text-sm flex items-center text-gray-500 mt-1">
                     <span>
                       {new Date(task.createdAt).toLocaleDateString('ko-KR', {
                         month: 'short',
@@ -691,3 +671,4 @@ const TaskList = () => {
 };
 
 export default TaskList;
+
