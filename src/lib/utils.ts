@@ -21,6 +21,11 @@ export async function updateUserBadgeProgress(
 ) {
   console.log(`배지 업데이트 시도: 사용자=${userId}, 카테고리=${category}, 증가량=${increment}`);
   try {
+    if (!userId) {
+      console.error('사용자 ID가 제공되지 않았습니다.');
+      return { success: false, error: '사용자 ID가 필요합니다.' };
+    }
+
     // 1. 해당 카테고리의 배지 조회
     const { data: badges, error: badgesError } = await supabase
       .from('badges')

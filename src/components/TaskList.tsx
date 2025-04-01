@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, Settings, FilterIcon } from 'lucide-react';
 import { cn, updateUserBadgeProgress } from '@/lib/utils';
@@ -28,7 +27,7 @@ type Task = {
   completed: boolean;
   createdAt: string;
   points: number;
-  recurrence: string;
+  recurrence: string; // Added this property to fix the TypeScript error
 };
 
 // 일별 점수 타입 정의

@@ -89,6 +89,7 @@ export type Database = {
           deadline: string | null
           description: string | null
           id: string
+          recurrence: string | null
           reward: number | null
           status: string | null
           title: string
@@ -99,6 +100,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          recurrence?: string | null
           reward?: number | null
           status?: string | null
           title: string
@@ -109,6 +111,7 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          recurrence?: string | null
           reward?: number | null
           status?: string | null
           title?: string
