@@ -27,7 +27,7 @@ type Task = {
   completed: boolean;
   createdAt: string;
   points: number;
-  recurrence: string; // Added this property to fix the TypeScript error
+  recurrence: string;
 };
 
 // 일별 점수 타입 정의
@@ -69,7 +69,7 @@ const TaskList = () => {
         return [];
       }
       
-      // Transform data to match Task type
+      // Transform data to match Task type, explicitly extracting recurrence property
       return data.map(task => ({
         id: task.id,
         title: task.title,
