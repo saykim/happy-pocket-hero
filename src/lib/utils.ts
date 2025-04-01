@@ -1,3 +1,4 @@
+
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +40,7 @@ export async function updateUserBadgeProgress(
     }
 
     // 2. 각 배지에 대해 사용자 진행 상황 업데이트
+    const updateResults = [];
     for (const badge of badges) {
       console.log(`배지 처리: ID=${badge.id}, 이름=${badge.name}, 필요 개수=${badge.required_count}`);
       
@@ -52,6 +54,7 @@ export async function updateUserBadgeProgress(
       
       if (userBadgeError) {
         console.error('사용자 배지 조회 중 오류:', userBadgeError);
+        updateResults.push({ badge: badge.name, error: userBadgeError });
         continue;
       }
 
@@ -72,12 +75,20 @@ export async function updateUserBadgeProgress(
         
         if (insertError) {
           console.error('배지 생성 중 오류:', insertError);
+          updateResults.push({ badge: badge.name, error: insertError });
         } else {
           console.log(`배지 생성 성공: 진행도=${increment}, 완료=${completed ? '예' : '아니오'}`);
           
           if (completed) {
             console.log(`🎉 축하합니다! '${badge.name}' 배지를 획득했습니다!`);
           }
+          
+          updateResults.push({ 
+            badge: badge.name, 
+            success: true, 
+            completed,
+            progress: increment
+          });
         }
       } else if (!userBadge.completed) {
         // 배지가 완료되지 않은 경우에만 업데이트
@@ -96,19 +107,34 @@ export async function updateUserBadgeProgress(
         
         if (updateError) {
           console.error('배지 업데이트 중 오류:', updateError);
+          updateResults.push({ badge: badge.name, error: updateError });
         } else {
           console.log(`배지 업데이트 성공: 이전=${userBadge.progress}, 현재=${newProgress}, 완료=${completed ? '예' : '아니오'}`);
           
           if (completed) {
             console.log(`🎉 축하합니다! '${badge.name}' 배지를 획득했습니다!`);
           }
+          
+          updateResults.push({ 
+            badge: badge.name, 
+            success: true, 
+            completed,
+            previousProgress: userBadge.progress,
+            currentProgress: newProgress
+          });
         }
       } else {
         console.log(`배지 이미 완료됨: ${badge.name}, 진행도=${userBadge.progress}`);
+        updateResults.push({ 
+          badge: badge.name, 
+          success: true, 
+          alreadyCompleted: true,
+          progress: userBadge.progress 
+        });
       }
     }
 
-    return { success: true };
+    return { success: true, results: updateResults };
   } catch (error) {
     console.error('배지 업데이트 중 예상치 못한 오류:', error);
     return { success: false, error };

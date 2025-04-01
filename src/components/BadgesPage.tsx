@@ -1,27 +1,30 @@
-import { useState, useEffect } from 'react';
-import { Award, BadgeCheck, BadgeX } from 'lucide-react';
+
+import { useState } from 'react';
+import { Award, BadgeCheck, BadgeX, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useUser } from '@/context/UserContext';
 import BadgeCard, { BadgeType } from './BadgeCard';
 import { useQuery } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type BadgeCategory = {
   id: string;
   name: string;
   icon: React.ElementType;
   color: string;
+  description: string;
 };
 
 // Define badge categories with icons and colors
 const BADGE_CATEGORIES: BadgeCategory[] = [
-  { id: 'all', name: '전체', icon: Award, color: 'text-purple-500' },
-  { id: 'savings', name: '저축', icon: BadgeCheck, color: 'text-blue-500' },
-  { id: 'expenses', name: '지출', icon: BadgeCheck, color: 'text-green-500' },
-  { id: 'tasks', name: '할일', icon: BadgeCheck, color: 'text-amber-500' },
-  { id: 'goals', name: '목표', icon: BadgeCheck, color: 'text-pink-500' },
-  { id: 'activity', name: '활동', icon: BadgeCheck, color: 'text-indigo-500' },
+  { id: 'all', name: '전체', icon: Award, color: 'text-purple-500', description: '모든 카테고리의 배지' },
+  { id: 'savings', name: '저축', icon: BadgeCheck, color: 'text-blue-500', description: '저축 목표 달성 배지' },
+  { id: 'expenses', name: '지출', icon: BadgeCheck, color: 'text-green-500', description: '지출 관리 배지' },
+  { id: 'tasks', name: '할일', icon: BadgeCheck, color: 'text-amber-500', description: '할일 완료 배지' },
+  { id: 'goals', name: '목표', icon: BadgeCheck, color: 'text-pink-500', description: '목표 달성 배지' },
+  { id: 'activity', name: '활동', icon: BadgeCheck, color: 'text-indigo-500', description: '앱 활동 배지' },
 ];
 
 const BadgesPage = () => {
@@ -54,6 +57,9 @@ const BadgesPage = () => {
         console.error('Error fetching user badges:', userBadgesError);
         return [];
       }
+      
+      console.log('Fetched badges:', allBadges.length);
+      console.log('Fetched user badges:', userBadges?.length || 0);
       
       // Combine the data with proper type checking
       return allBadges.map(badge => {
@@ -113,22 +119,30 @@ const BadgesPage = () => {
       <Tabs defaultValue="all" value={activeCategory} onValueChange={setActiveCategory}>
         <TabsList className="bg-gray-100 p-1 rounded-xl w-full grid grid-cols-3 md:grid-cols-6 gap-1">
           {BADGE_CATEGORIES.map(category => (
-            <TabsTrigger 
-              key={category.id} 
-              value={category.id}
-              className={cn(
-                "data-[state=active]:bg-white",
-                "data-[state=active]:shadow-sm",
-                "data-[state=active]:font-medium",
-                "transition-all"
-              )}
-            >
-              <category.icon 
-                className={cn("mr-1", category.color)} 
-                size={16} 
-              />
-              {category.name}
-            </TabsTrigger>
+            <TooltipProvider key={category.id}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <TabsTrigger 
+                    value={category.id}
+                    className={cn(
+                      "data-[state=active]:bg-white",
+                      "data-[state=active]:shadow-sm",
+                      "data-[state=active]:font-medium",
+                      "transition-all"
+                    )}
+                  >
+                    <category.icon 
+                      className={cn("mr-1", category.color)} 
+                      size={16} 
+                    />
+                    {category.name}
+                  </TabsTrigger>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{category.description}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ))}
         </TabsList>
         
@@ -158,7 +172,21 @@ const BadgesPage = () => {
       
       {/* Achievements explanation */}
       <div className="candy-card bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-900">
-        <h3 className="font-bold mb-2 dark:text-gray-100">배지를 얻는 방법</h3>
+        <div className="flex items-center space-x-2 mb-3">
+          <h3 className="font-bold dark:text-gray-100">배지를 얻는 방법</h3>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div>
+                  <Info size={16} className="text-gray-400 hover:text-gray-600 cursor-help" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>배지는 앱을 사용하면서 자동으로 획득합니다.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
         <ul className="space-y-2 text-sm">
           <li className="flex items-start">
             <BadgeCheck className="text-green-500 mr-2 flex-shrink-0 mt-0.5" size={16} />

@@ -1,10 +1,26 @@
+
 import { useState, useEffect } from 'react';
-import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { ListTodo, CheckCircle, Circle, Trash2, Plus, StarIcon, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, Settings, FilterIcon } from 'lucide-react';
 import { cn, updateUserBadgeProgress } from '@/lib/utils';
 import { useUser } from '@/context/UserContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useMutation, useQuery } from '@tanstack/react-query';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 type Task = {
   id: string;
@@ -12,6 +28,7 @@ type Task = {
   completed: boolean;
   createdAt: string;
   points: number;
+  recurrence: string;
 };
 
 // 일별 점수 타입 정의
@@ -22,19 +39,61 @@ type DailyScore = {
 };
 
 const TaskList = () => {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
   const [showInput, setShowInput] = useState(false);
-  const [totalPoints, setTotalPoints] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+  const [newTaskTitle, setNewTaskTitle] = useState('');
+  const [newTaskRecurrence, setNewTaskRecurrence] = useState('one-time');
   const [showDailyScores, setShowDailyScores] = useState(false);
-  const [dailyScores, setDailyScores] = useState<DailyScore[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
   const { currentUser } = useUser();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // 할일을 일별로 그룹화하는 함수
-  const groupTasksByDate = (tasks: Task[]) => {
+  // Fetch tasks using react-query
+  const { data: tasks = [], isLoading } = useQuery({
+    queryKey: ['tasks', currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser) return [];
+      
+      const { data, error } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('user_id', currentUser.id)
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        console.error('Error fetching tasks:', error);
+        toast({
+          title: '오류',
+          description: '할 일 목록을 불러오는 중 오류가 발생했습니다.',
+          variant: 'destructive',
+        });
+        return [];
+      }
+      
+      // Transform data to match Task type
+      return data.map(task => ({
+        id: task.id,
+        title: task.title,
+        completed: task.status === 'completed',
+        createdAt: task.created_at,
+        points: task.reward || Math.floor(Math.random() * 50) + 30,
+        recurrence: task.recurrence || 'one-time',
+      }));
+    },
+    enabled: !!currentUser
+  });
+  
+  // Calculate total points
+  const totalPoints = tasks
+    .filter(task => task.completed)
+    .reduce((sum, task) => sum + task.points, 0);
+  
+  // Group tasks by recurrence type
+  const recurringTasks = tasks.filter(task => task.recurrence !== 'one-time');
+  const oneTimeTasks = tasks.filter(task => task.recurrence === 'one-time');
+  
+  // Calculate daily scores
+  const dailyScores: DailyScore[] = (() => {
     const grouped: { [key: string]: Task[] } = {};
     
     tasks.forEach(task => {
@@ -59,172 +118,92 @@ const TaskList = () => {
         tasks
       };
     }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()); // 최신 날짜순 정렬
-  };
+  })();
 
-  // Fetch tasks when component mounts or when user changes
-  useEffect(() => {
-    if (!currentUser) return;
-    
-    const fetchTasks = async () => {
-      setIsLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('tasks')
-          .select('*')
-          .eq('user_id', currentUser.id)
-          .order('created_at', { ascending: false });
-        
-        if (error) {
-          console.error('Error fetching tasks:', error);
-          toast({
-            title: '오류',
-            description: '할 일 목록을 불러오는 중 오류가 발생했습니다.',
-            variant: 'destructive',
-          });
-          return;
-        }
-        
-        // Transform data to match Task type
-        const formattedTasks = data.map(task => ({
-          id: task.id,
-          title: task.title,
-          completed: task.status === 'completed',
-          createdAt: task.created_at,
-          points: task.reward || Math.floor(Math.random() * 50) + 30, // Use reward or generate random
-        }));
-        
-        setTasks(formattedTasks);
-        
-        // 일별 점수 계산
-        setDailyScores(groupTasksByDate(formattedTasks));
-        
-        // Calculate total points from completed tasks
-        const completedPoints = formattedTasks
-          .filter(task => task.completed)
-          .reduce((sum, task) => sum + task.points, 0);
-          
-        setTotalPoints(completedPoints);
-      } catch (error) {
-        console.error('Unexpected error fetching tasks:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchTasks();
-  }, [currentUser, toast]);
-
-  const handleAddTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!newTaskTitle.trim() || !currentUser) return;
-    
-    const pointsValue = Math.floor(Math.random() * 50) + 30; // Random points between 30-80
-    
-    // Create task in the database
-    try {
+  // Add task mutation
+  const addTaskMutation = useMutation({
+    mutationFn: async (taskData: { title: string, recurrence: string }) => {
+      if (!currentUser) throw new Error("User not authenticated");
+      
+      const pointsValue = Math.floor(Math.random() * 50) + 30; // Random points between 30-80
+      
       const { data, error } = await supabase
         .from('tasks')
         .insert([
           {
-            title: newTaskTitle,
+            title: taskData.title,
             user_id: currentUser.id,
             reward: pointsValue,
-            status: 'todo'
+            status: 'todo',
+            recurrence: taskData.recurrence
           }
         ])
         .select()
         .single();
       
-      if (error) {
-        console.error('Error adding task:', error);
-        toast({
-          title: '오류',
-          description: '할 일을 추가하는 중 오류가 발생했습니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      // Add the new task to cache
+      queryClient.invalidateQueries({ queryKey: ['tasks', currentUser?.id] });
       
-      // Add the new task to the local state
-      const newTask = {
-        id: data.id,
-        title: data.title,
-        completed: false,
-        createdAt: data.created_at,
-        points: data.reward,
-      };
-      
-      const updatedTasks = [newTask, ...tasks];
-      setTasks(updatedTasks);
-      setDailyScores(groupTasksByDate(updatedTasks));
       setNewTaskTitle('');
+      setNewTaskRecurrence('one-time');
       setShowInput(false);
       
       toast({
         title: '성공',
         description: '새로운 할 일이 추가되었습니다.',
       });
-    } catch (error) {
-      console.error('Unexpected error adding task:', error);
+    },
+    onError: (error) => {
+      console.error('Error adding task:', error);
+      toast({
+        title: '오류',
+        description: '할 일을 추가하는 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
     }
-  };
+  });
 
-  const toggleTaskCompletion = async (taskId: string) => {
-    const taskToUpdate = tasks.find(task => task.id === taskId);
-    if (!taskToUpdate || !currentUser) return;
-    
-    const newStatus = taskToUpdate.completed ? 'todo' : 'completed';
-    const beingCompleted = !taskToUpdate.completed; // 미완료 -> 완료로 변경되는 경우
-    
-    try {
-      const { error } = await supabase
+  // Toggle task completion mutation
+  const toggleTaskMutation = useMutation({
+    mutationFn: async ({ taskId, completed }: { taskId: string, completed: boolean }) => {
+      if (!currentUser) throw new Error("User not authenticated");
+      
+      const newStatus = completed ? 'completed' : 'todo';
+      
+      const { data, error } = await supabase
         .from('tasks')
         .update({ status: newStatus })
         .eq('id', taskId)
-        .eq('user_id', currentUser.id);
+        .eq('user_id', currentUser.id)
+        .select();
       
-      if (error) {
-        console.error('Error updating task:', error);
-        toast({
-          title: '오류',
-          description: '할 일 상태를 변경하는 중 오류가 발생했습니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (error) throw error;
       
-      // Update local state
-      const updatedTasks = tasks.map((task) => {
-        if (task.id === taskId) {
-          const newCompletedState = !task.completed;
-          
-          // Update total points
-          if (newCompletedState) {
-            setTotalPoints(prev => prev + task.points);
-          } else {
-            setTotalPoints(prev => prev - task.points);
-          }
-          
-          return { ...task, completed: newCompletedState };
-        }
-        return task;
-      });
+      return { taskId, completed, data };
+    },
+    onSuccess: async (result) => {
+      // Update the cache
+      queryClient.invalidateQueries({ queryKey: ['tasks', currentUser?.id] });
       
-      setTasks(updatedTasks);
-      setDailyScores(groupTasksByDate(updatedTasks));
-      
-      // 할일이 완료 상태로 변경된 경우에만 배지 업데이트
-      if (beingCompleted) {
+      // Check if the task is being completed (not uncompleted)
+      if (result.completed) {
         try {
           console.log("🏆 할일 완료 감지! 배지 업데이트 중...");
           const tasksResult = await updateUserBadgeProgress(currentUser.id, 'tasks');
           console.log("할일 배지 업데이트 결과:", tasksResult);
           
-          // 모든 태스크가 완료되었는지 확인
-          const allTasksCompleted = updatedTasks.every(t => t.completed);
+          // Check if all tasks of current view are completed
+          const currentViewTasks = activeTab === 'recurring' ? recurringTasks : 
+                                 activeTab === 'one-time' ? oneTimeTasks : 
+                                 tasks;
           
-          if (allTasksCompleted) {
+          const allTasksCompleted = currentViewTasks.every(t => t.id === result.taskId ? true : t.completed);
+          
+          if (allTasksCompleted && currentViewTasks.length > 0) {
             console.log("🎯 모든 할일 완료! 추가 배지 업데이트 중...");
             // 추가 배지 부여 (모든 할일 완료)
             const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity', 3);
@@ -243,10 +222,9 @@ const TaskList = () => {
             });
           }
           
-          // 배지 데이터 새로고침
+          // Refresh badges data
           await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
           console.log("배지 데이터 새로고침 완료");
-          
         } catch (badgeError) {
           console.error('배지 업데이트 중 오류:', badgeError);
         }
@@ -254,53 +232,76 @@ const TaskList = () => {
       
       toast({
         title: '성공',
-        description: `할 일이 ${newStatus === 'completed' ? '완료' : '미완료'}로 변경되었습니다.`,
+        description: `할 일이 ${result.completed ? '완료' : '미완료'}로 변경되었습니다.`,
       });
-    } catch (error) {
-      console.error('Unexpected error updating task:', error);
+    },
+    onError: (error) => {
+      console.error('Error updating task:', error);
+      toast({
+        title: '오류',
+        description: '할 일 상태를 변경하는 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
     }
-  };
+  });
 
-  const deleteTask = async (taskId: string) => {
-    if (!currentUser) return;
-    
-    const taskToDelete = tasks.find((task) => task.id === taskId);
-    if (!taskToDelete) return;
-    
-    try {
+  // Delete task mutation
+  const deleteTaskMutation = useMutation({
+    mutationFn: async (taskId: string) => {
+      if (!currentUser) throw new Error("User not authenticated");
+      
       const { error } = await supabase
         .from('tasks')
         .delete()
         .eq('id', taskId)
         .eq('user_id', currentUser.id);
       
-      if (error) {
-        console.error('Error deleting task:', error);
-        toast({
-          title: '오류',
-          description: '할 일을 삭제하는 중 오류가 발생했습니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      if (error) throw error;
       
-      // If completed, subtract points
-      if (taskToDelete.completed) {
-        setTotalPoints(prev => prev - taskToDelete.points);
-      }
-      
-      // Remove from local state
-      const updatedTasks = tasks.filter((task) => task.id !== taskId);
-      setTasks(updatedTasks);
-      setDailyScores(groupTasksByDate(updatedTasks));
+      return taskId;
+    },
+    onSuccess: (taskId) => {
+      // Update the cache
+      queryClient.invalidateQueries({ queryKey: ['tasks', currentUser?.id] });
       
       toast({
         title: '성공',
         description: '할 일이 삭제되었습니다.',
       });
-    } catch (error) {
-      console.error('Unexpected error deleting task:', error);
+    },
+    onError: (error) => {
+      console.error('Error deleting task:', error);
+      toast({
+        title: '오류',
+        description: '할 일을 삭제하는 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
     }
+  });
+
+  const handleAddTask = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newTaskTitle.trim() || !currentUser) return;
+    
+    addTaskMutation.mutate({ 
+      title: newTaskTitle,
+      recurrence: newTaskRecurrence
+    });
+  };
+
+  const toggleTaskCompletion = (taskId: string) => {
+    const taskToUpdate = tasks.find(task => task.id === taskId);
+    if (!taskToUpdate || !currentUser) return;
+    
+    toggleTaskMutation.mutate({ 
+      taskId, 
+      completed: !taskToUpdate.completed 
+    });
+  };
+
+  const deleteTask = (taskId: string) => {
+    if (!currentUser) return;
+    deleteTaskMutation.mutate(taskId);
   };
 
   // 날짜 포맷 함수
@@ -312,6 +313,32 @@ const TaskList = () => {
       day: 'numeric',
       weekday: 'long'
     });
+  };
+
+  // Get tasks based on active tab
+  const getFilteredTasks = () => {
+    switch (activeTab) {
+      case 'recurring':
+        return recurringTasks;
+      case 'one-time':
+        return oneTimeTasks;
+      default:
+        return tasks;
+    }
+  };
+
+  // Get recurrence badge text
+  const getRecurrenceBadge = (recurrence: string) => {
+    switch (recurrence) {
+      case 'daily':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-200">매일</Badge>;
+      case 'weekly':
+        return <Badge variant="outline" className="bg-purple-100 text-purple-800 border-purple-200">매주</Badge>;
+      case 'monthly':
+        return <Badge variant="outline" className="bg-pink-100 text-pink-800 border-pink-200">매월</Badge>;
+      default:
+        return <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">일회성</Badge>;
+    }
   };
 
   return (
@@ -328,33 +355,120 @@ const TaskList = () => {
         </div>
       </div>
 
-      {/* 일별 달성 점수 토글 버튼 */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold flex items-center">
-          <ListTodo className="mr-2 text-blue-500" />
-          할 일
-        </h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={() => setShowDailyScores(!showDailyScores)}
-            className={cn(
-              "candy-button flex items-center",
-              showDailyScores 
-                ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            )}
-          >
-            <Calendar size={16} className="mr-1" />
-            {showDailyScores ? "일별 점수 숨기기" : "일별 점수 보기"}
-            {showDailyScores ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
-          </button>
-          <button
-            onClick={() => setShowInput(true)}
-            className="candy-button bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
-          >
-            할 일 추가
-          </button>
+      {/* 할일 헤더와 탭 */}
+      <div className="flex flex-col space-y-4">
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-bold flex items-center">
+            <ListTodo className="mr-2 text-blue-500" />
+            할 일
+          </h2>
+          <div className="flex space-x-2">
+            <button
+              onClick={() => setShowDailyScores(!showDailyScores)}
+              className={cn(
+                "candy-button flex items-center",
+                showDailyScores 
+                  ? "bg-purple-100 text-purple-700 hover:bg-purple-200" 
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              )}
+            >
+              <Calendar size={16} className="mr-1" />
+              {showDailyScores ? "일별 점수 숨기기" : "일별 점수 보기"}
+              {showDailyScores ? <ChevronUp size={16} className="ml-1" /> : <ChevronDown size={16} className="ml-1" />}
+            </button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" className="candy-button bg-gradient-to-r from-blue-500 to-indigo-500 text-white">
+                  <Plus size={16} className="mr-1" />
+                  할 일 추가
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>새로운 할 일 추가</DialogTitle>
+                  <DialogDescription>
+                    할 일의 제목과 반복 주기를 입력하세요.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddTask}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="task-title">할 일 제목</Label>
+                      <Input
+                        id="task-title"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="새로운 할 일을 입력하세요..."
+                        className="candy-input"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="task-recurrence">반복 주기</Label>
+                      <Select
+                        value={newTaskRecurrence}
+                        onValueChange={setNewTaskRecurrence}
+                      >
+                        <SelectTrigger id="task-recurrence">
+                          <SelectValue placeholder="반복 주기를 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one-time">
+                            <div className="flex items-center">
+                              <ClockIcon size={16} className="mr-2 text-gray-500" />
+                              일회성
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="daily">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-blue-500" />
+                              매일
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="weekly">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-purple-500" />
+                              매주
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="monthly">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-pink-500" />
+                              매월
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={!newTaskTitle.trim()}>
+                      추가하기
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
+
+        {/* 필터 탭 */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="grid grid-cols-3 mb-4">
+            <TabsTrigger value="all" className="flex items-center">
+              <FilterIcon size={14} className="mr-1" />
+              모두 ({tasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="recurring" className="flex items-center">
+              <RepeatIcon size={14} className="mr-1" />
+              반복 ({recurringTasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="one-time" className="flex items-center">
+              <ClockIcon size={14} className="mr-1" />
+              일회성 ({oneTimeTasks.length})
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* 일별 달성 점수 표시 */}
@@ -419,29 +533,6 @@ const TaskList = () => {
         </div>
       )}
 
-      {/* Add task input */}
-      {showInput && (
-        <form onSubmit={handleAddTask} className="candy-card animate-scale-up p-4">
-          <div className="flex items-center">
-            <input
-              type="text"
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="새로운 할 일을 입력하세요..."
-              className="candy-input flex-1 mr-2"
-              autoFocus
-            />
-            <button
-              type="submit"
-              disabled={!newTaskTitle.trim()}
-              className="candy-button px-4 py-2 bg-green-500 text-white disabled:bg-gray-300"
-            >
-              <Plus size={18} />
-            </button>
-          </div>
-        </form>
-      )}
-
       {/* Tasks list */}
       <div className="space-y-2">
         {isLoading ? (
@@ -449,19 +540,91 @@ const TaskList = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
             <p className="text-gray-500">할 일을 불러오는 중...</p>
           </div>
-        ) : tasks.length === 0 ? (
+        ) : getFilteredTasks().length === 0 ? (
           <div className="text-center py-10 bg-gray-50 rounded-xl border border-dashed border-gray-300">
             <ListTodo size={48} className="mx-auto mb-3 text-gray-400" />
-            <p className="text-gray-500">할 일 목록이 비어있어요</p>
-            <button
-              onClick={() => setShowInput(true)}
-              className="mt-3 text-blue-500 hover:underline"
-            >
-              첫 번째 할 일을 추가해 보세요!
-            </button>
+            <p className="text-gray-500">
+              {activeTab === 'recurring' 
+                ? '반복 할 일이 없습니다' 
+                : activeTab === 'one-time' 
+                  ? '일회성 할 일이 없습니다' 
+                  : '할 일 목록이 비어있어요'}
+            </p>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="link" className="mt-3 text-blue-500">
+                  첫 번째 할 일을 추가해 보세요!
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>새로운 할 일 추가</DialogTitle>
+                  <DialogDescription>
+                    할 일의 제목과 반복 주기를 입력하세요.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleAddTask}>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="task-title-empty">할 일 제목</Label>
+                      <Input
+                        id="task-title-empty"
+                        value={newTaskTitle}
+                        onChange={(e) => setNewTaskTitle(e.target.value)}
+                        placeholder="새로운 할 일을 입력하세요..."
+                        className="candy-input"
+                        autoFocus
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="task-recurrence-empty">반복 주기</Label>
+                      <Select
+                        value={newTaskRecurrence}
+                        onValueChange={setNewTaskRecurrence}
+                      >
+                        <SelectTrigger id="task-recurrence-empty">
+                          <SelectValue placeholder="반복 주기를 선택하세요" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one-time">
+                            <div className="flex items-center">
+                              <ClockIcon size={16} className="mr-2 text-gray-500" />
+                              일회성
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="daily">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-blue-500" />
+                              매일
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="weekly">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-purple-500" />
+                              매주
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="monthly">
+                            <div className="flex items-center">
+                              <RepeatIcon size={16} className="mr-2 text-pink-500" />
+                              매월
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="submit" disabled={!newTaskTitle.trim()}>
+                      추가하기
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         ) : (
-          tasks.map((task) => (
+          getFilteredTasks().map((task) => (
             <div
               key={task.id}
               className={cn(
@@ -484,14 +647,21 @@ const TaskList = () => {
                   )}
                 </button>
                 <div className="min-w-0">
-                  <p
-                    className={cn(
-                      "font-medium truncate transition-all",
-                      task.completed && "line-through text-gray-400"
+                  <div className="flex items-center space-x-2">
+                    <p
+                      className={cn(
+                        "font-medium truncate transition-all",
+                        task.completed && "line-through text-gray-400"
+                      )}
+                    >
+                      {task.title}
+                    </p>
+                    {task.recurrence !== 'one-time' && (
+                      <div className="flex-shrink-0">
+                        {getRecurrenceBadge(task.recurrence)}
+                      </div>
                     )}
-                  >
-                    {task.title}
-                  </p>
+                  </div>
                   <div className="text-sm flex items-center text-gray-500 mt-1 space-x-2">
                     <div className="flex items-center">
                       <StarIcon size={14} className="mr-0.5 text-yellow-500" />
