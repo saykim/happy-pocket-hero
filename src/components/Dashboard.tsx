@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PiggyBank, Target, ListTodo, ChevronsRight, TrendingUp, HandCoins } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -20,7 +19,7 @@ import {
   Legend
 } from 'recharts';
 import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
-import { format, parseISO, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { format, parseISO, subDays, startOfMonth, endOfMonth, isValid } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 type DashboardStat = {
@@ -416,7 +415,19 @@ const Dashboard = () => {
                   dataKey="date" 
                   tickLine={false} 
                   tickMargin={10}
-                  tickFormatter={(value) => format(parseISO(value), 'dd일', { locale: ko })}
+                  tickFormatter={(value) => {
+                    try {
+                      const date = parseISO(value);
+                      if (isValid(date)) {
+                        return format(date, 'dd일', { locale: ko });
+                      }
+                      return value;
+                    } catch (error) {
+                      // If parsing fails, return the original value
+                      console.error('Error formatting date:', error);
+                      return value;
+                    }
+                  }}
                   stroke="#9ca3af"
                   fontSize={12}
                 />
@@ -437,9 +448,18 @@ const Dashboard = () => {
                           payload={payload} 
                           labelFormatter={(value) => {
                             if (typeof value === 'string') {
-                              return format(parseISO(value), 'M월 d일', { locale: ko });
+                              try {
+                                const date = parseISO(value);
+                                if (isValid(date)) {
+                                  return format(date, 'M월 d일', { locale: ko });
+                                }
+                                return String(value);
+                              } catch (error) {
+                                console.error('Error formatting label date:', error);
+                                return String(value);
+                              }
                             }
-                            return value;
+                            return String(value);
                           }}
                         />
                       );
