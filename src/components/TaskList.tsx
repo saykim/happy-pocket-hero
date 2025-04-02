@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ListTodo, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, FilterIcon } from 'lucide-react';
 import { updateUserBadgeProgress } from '@/lib/utils';
@@ -286,7 +285,7 @@ const TaskList = () => {
               onClick={() => setShowDailyTasks(!showDailyTasks)}
               variant="outline"
               size="sm"
-              className="candy-button flex items-center"
+              className="candy-button flex items-center text-gray-700 dark:text-white"
             >
               <Calendar size={16} className="mr-1" />
               {showDailyTasks ? "일별 현황 숨기기" : "일별 현황 보기"}
