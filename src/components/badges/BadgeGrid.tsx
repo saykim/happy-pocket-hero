@@ -15,7 +15,13 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
   
   // Check for newly completed badges and show toast notifications
   useEffect(() => {
-    if (badges.length === 0 || previousBadges.length === 0) {
+    if (badges.length === 0) {
+      return;
+    }
+    
+    // First time loading badges, just set them without notifications
+    if (previousBadges.length === 0) {
+      console.log('초기 배지 데이터 설정:', badges.length);
       setPreviousBadges(badges);
       return;
     }

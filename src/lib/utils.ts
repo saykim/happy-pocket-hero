@@ -69,8 +69,7 @@ export async function updateUserBadgeProgress(
         const newProgress = increment;
         const completed = newProgress >= badge.required_count;
         
-        // 사용자 ID 확인 로그
-        console.log(`배지 생성 시도 - 사용자 ID: ${userId}`);
+        console.log(`새 배지 생성: 사용자=${userId}, 배지=${badge.id}, 진행도=${newProgress}/${badge.required_count}`);
         
         const { data: insertData, error: insertError } = await supabase
           .from('user_badges')
@@ -102,11 +101,12 @@ export async function updateUserBadgeProgress(
         }
       } else {
         // 이미 존재하는 배지 업데이트
-        // 완료된 배지도 계속 진행 상황을 누적하도록 수정
         const newProgress = userBadge.progress + increment;
         const wasCompleted = userBadge.completed;
         const nowCompleted = newProgress >= badge.required_count;
         const newlyCompleted = !wasCompleted && nowCompleted;
+        
+        console.log(`배지 업데이트: ID=${userBadge.id}, 이전=${userBadge.progress}, 신규=${newProgress}/${badge.required_count}, 완료=${nowCompleted ? '예' : '아니오'}`);
         
         // 배지 진행 상황 업데이트
         const { data: updateData, error: updateError } = await supabase

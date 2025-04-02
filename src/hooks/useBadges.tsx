@@ -9,6 +9,8 @@ export const useBadges = (userId: string | undefined) => {
     queryFn: async () => {
       if (!userId) return [];
       
+      console.log('Fetching badges for user:', userId);
+      
       // Get all badges with explicit typing for the response
       const { data: allBadges, error: badgesError } = await supabase
         .from('badges')
@@ -16,7 +18,7 @@ export const useBadges = (userId: string | undefined) => {
       
       if (badgesError) {
         console.error('Error fetching badges:', badgesError);
-        return [];
+        throw new Error(`배지 조회 중 오류: ${badgesError.message}`);
       }
       
       // Get user's badge progress with explicit typing
@@ -26,11 +28,11 @@ export const useBadges = (userId: string | undefined) => {
         .eq('user_id', userId);
       
       if (userBadgesError) {
-        console.error('Error fetching user badges:', userBadgesError);
-        return [];
+        console.error('Error fetching user badges:', userBadgesError, 'for user:', userId);
+        // Don't throw here, just return what we can
       }
       
-      console.log('Fetched badges:', allBadges.length);
+      console.log('Fetched badges:', allBadges?.length || 0);
       console.log('Fetched user badges:', userBadges?.length || 0);
       
       // Log each user badge for debugging
@@ -40,6 +42,8 @@ export const useBadges = (userId: string | undefined) => {
           progress: ub.progress,
           completed: ub.completed
         })));
+      } else {
+        console.log('No user badges found for user ID:', userId);
       }
       
       // Combine the data with proper type checking
@@ -58,7 +62,8 @@ export const useBadges = (userId: string | undefined) => {
       });
     },
     enabled: !!userId,
-    // Add refetchInterval to periodically check for badge updates
-    refetchInterval: 15000, // Check every 15 seconds
+    // Check more frequently for updates
+    refetchInterval: 5000, // Check every 5 seconds
+    staleTime: 3000, // Consider data stale after 3 seconds
   });
 };
