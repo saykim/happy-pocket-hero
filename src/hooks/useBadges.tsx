@@ -59,6 +59,6 @@ export const useBadges = (userId: string | undefined) => {
     },
     enabled: !!userId,
     // Add refetchInterval to periodically check for badge updates
-    refetchInterval: 30000, // Check every 30 seconds
+    refetchInterval: 15000, // Check every 15 seconds
   });
 };

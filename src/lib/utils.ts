@@ -68,6 +68,10 @@ export async function updateUserBadgeProgress(
         // 새 배지 진행 상황 레코드 생성
         const newProgress = increment;
         const completed = newProgress >= badge.required_count;
+        
+        // 사용자 ID 확인 로그
+        console.log(`배지 생성 시도 - 사용자 ID: ${userId}`);
+        
         const { data: insertData, error: insertError } = await supabase
           .from('user_badges')
           .insert({
@@ -102,6 +106,7 @@ export async function updateUserBadgeProgress(
         const newProgress = userBadge.progress + increment;
         const wasCompleted = userBadge.completed;
         const nowCompleted = newProgress >= badge.required_count;
+        const newlyCompleted = !wasCompleted && nowCompleted;
         
         // 배지 진행 상황 업데이트
         const { data: updateData, error: updateError } = await supabase
@@ -110,7 +115,7 @@ export async function updateUserBadgeProgress(
             progress: newProgress,
             completed: nowCompleted,
             // 이전에 완료되지 않았고 지금 완료된 경우에만 earned_at 업데이트
-            earned_at: (!wasCompleted && nowCompleted) ? new Date().toISOString() : userBadge.earned_at
+            earned_at: newlyCompleted ? new Date().toISOString() : userBadge.earned_at
           })
           .eq('id', userBadge.id)
           .select();
@@ -122,14 +127,14 @@ export async function updateUserBadgeProgress(
           console.log(`배지 업데이트 성공: 이전=${userBadge.progress}, 현재=${newProgress}, 완료=${nowCompleted ? '예' : '아니오'}`);
           
           // 새로 완료된 배지인 경우 축하 메시지 표시
-          if (!wasCompleted && nowCompleted) {
+          if (newlyCompleted) {
             console.log(`🎉 축하합니다! '${badge.name}' 배지를 획득했습니다!`);
           }
           
           updateResults.push({ 
             badge: badge.name, 
             success: true,
-            newlyCompleted: !wasCompleted && nowCompleted,
+            newlyCompleted: newlyCompleted,
             previousProgress: userBadge.progress,
             currentProgress: newProgress
           });

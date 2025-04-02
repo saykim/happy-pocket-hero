@@ -155,31 +155,42 @@ const TaskList = () => {
       if (result.completed) {
         try {
           console.log("🏆 할일 완료 감지! 배지 업데이트 중...");
-          // Update task badge progress for every task completion
+          
+          // 1. Update task badge progress for every task completion
           const tasksResult = await updateUserBadgeProgress(currentUser.id, 'tasks');
           console.log("할일 배지 업데이트 결과:", tasksResult);
           
-          // Check if all tasks of current view are completed
+          // 2. Update activity badge progress for task completion
+          const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity');
+          console.log("활동 배지 업데이트 결과:", activityResult);
+          
+          // 3. Get updated task count
+          const updatedTasks = [...tasks];
+          const taskIndex = updatedTasks.findIndex(t => t.id === result.taskId);
+          if (taskIndex !== -1) {
+            updatedTasks[taskIndex] = { ...updatedTasks[taskIndex], completed: true };
+          }
+          
+          const newCompletedCount = updatedTasks.filter(t => t.completed).length;
+          console.log(`완료된 작업 수 업데이트: ${newCompletedCount}/${updatedTasks.length}`);
+          
+          // 4. Check if all tasks of current view are completed
           const currentViewTasks = activeTab === 'recurring' ? recurringTasks : 
                                  activeTab === 'one-time' ? oneTimeTasks : 
-                                 tasks;
+                                 updatedTasks;
           
-          // Get count of all completed tasks in current view
-          const completedTasksCount = currentViewTasks.filter(t => 
-            t.id === result.taskId ? true : t.completed
-          ).length;
-          
-          console.log(`완료된 작업 수: ${completedTasksCount}/${currentViewTasks.length}`);
-          
-          // Check if all tasks in current view are completed
-          const allTasksCompleted = completedTasksCount === currentViewTasks.length && currentViewTasks.length > 0;
+          const allTasksCompleted = currentViewTasks.length > 0 && 
+                                   currentViewTasks.every(t => 
+                                     t.id === result.taskId ? true : t.completed
+                                   );
           
           if (allTasksCompleted) {
             console.log("🎯 모든 할일 완료! 추가 배지 업데이트 중...");
-            // Award activity badges when all tasks are completed
-            // Passing the total number of completed tasks to count each completion as an individual activity
-            const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity', totalCompletedTasks);
-            console.log("활동 배지 업데이트 결과:", activityResult);
+            
+            // 특별 보상: 모든 작업을 완료하면 추가 배지 포인트 제공
+            // 완료된 작업 수만큼 포인트 추가 (누적 효과)
+            await updateUserBadgeProgress(currentUser.id, 'activity', newCompletedCount);
+            console.log(`모든 할일 완료 보너스: 활동 배지에 ${newCompletedCount}점 추가`);
             
             // Special toast message
             toast({
@@ -194,7 +205,7 @@ const TaskList = () => {
             });
           }
           
-          // Refresh badges data
+          // 5. Refresh badges data to show new earned badges
           await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
           console.log("배지 데이터 새로고침 완료");
         } catch (badgeError) {
@@ -256,17 +267,29 @@ const TaskList = () => {
     const checkAllCompleted = async () => {
       if (!currentUser || tasks.length === 0) return;
       
-      // Only proceed if all tasks are completed
-      const allCompleted = tasks.length > 0 && tasks.every(task => task.completed);
+      // Count completed tasks
+      const completedCount = tasks.filter(task => task.completed).length;
+      console.log(`현재 완료된 작업: ${completedCount}/${tasks.length}`);
       
-      if (allCompleted) {
-        console.log("🔍 모든 할일이 이미 완료됨! 배지 확인 중...");
+      // Only proceed if there are completed tasks
+      if (completedCount > 0) {
         try {
-          // Update badge progress for each category
-          await updateUserBadgeProgress(currentUser.id, 'tasks', tasks.length);
-          await updateUserBadgeProgress(currentUser.id, 'activity', tasks.length);
+          // Update badge progress for tasks category based on completion count
+          await updateUserBadgeProgress(currentUser.id, 'tasks', completedCount);
+          console.log(`작업 완료 배지 업데이트: ${completedCount}개 적용됨`);
           
-          console.log(`총 ${tasks.length}개의 할일 완료에 대한 배지 업데이트 완료`);
+          // Update activity badge progress
+          await updateUserBadgeProgress(currentUser.id, 'activity', completedCount);
+          console.log(`활동 배지 업데이트: ${completedCount}개 적용됨`);
+          
+          // If all tasks are completed, give special bonus
+          if (completedCount === tasks.length && tasks.length > 0) {
+            console.log("🌟 모든 작업이 완료되었습니다! 특별 보너스 지급");
+            
+            // Give additional bonus points for completing all tasks
+            await updateUserBadgeProgress(currentUser.id, 'activity', tasks.length);
+            console.log(`전체 완료 보너스: 활동 배지에 ${tasks.length}점 추가`);
+          }
           
           // Refresh badges data
           await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
@@ -276,6 +299,7 @@ const TaskList = () => {
       }
     };
     
+    // Run the check when tasks data changes
     checkAllCompleted();
   }, [currentUser, tasks, queryClient]);
 

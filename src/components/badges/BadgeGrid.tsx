@@ -1,6 +1,6 @@
 
 import { BadgeX } from 'lucide-react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import BadgeCard, { BadgeType } from '../BadgeCard';
 
@@ -11,17 +11,27 @@ interface BadgeGridProps {
 
 const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
   const { toast } = useToast();
+  const [previousBadges, setPreviousBadges] = useState<BadgeType[]>([]);
   
   // Check for newly completed badges and show toast notifications
   useEffect(() => {
-    const newlyCompletedBadges = badges.filter(badge => 
-      badge.completed && 
-      badge.progress >= badge.required_count && 
-      // We need this condition to avoid showing toasts for badges that were already completed
-      badge.progress === badge.required_count
-    );
+    if (badges.length === 0 || previousBadges.length === 0) {
+      setPreviousBadges(badges);
+      return;
+    }
+    
+    // Find newly completed badges by comparing current with previous state
+    const newlyCompletedBadges = badges.filter(badge => {
+      // Find the same badge in previous state
+      const prevBadge = previousBadges.find(pb => pb.id === badge.id);
+      
+      // Check if it's now completed but wasn't before
+      return badge.completed && prevBadge && !prevBadge.completed;
+    });
     
     if (newlyCompletedBadges.length > 0) {
+      console.log('새로 획득한 배지:', newlyCompletedBadges.map(b => b.name));
+      
       newlyCompletedBadges.forEach(badge => {
         toast({
           title: '축하합니다! 🎉',
@@ -30,6 +40,9 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
         });
       });
     }
+    
+    // Update previous badges for next comparison
+    setPreviousBadges(badges);
   }, [badges, toast]);
   
   if (isLoading) {
