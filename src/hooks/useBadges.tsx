@@ -33,6 +33,15 @@ export const useBadges = (userId: string | undefined) => {
       console.log('Fetched badges:', allBadges.length);
       console.log('Fetched user badges:', userBadges?.length || 0);
       
+      // Log each user badge for debugging
+      if (userBadges && userBadges.length > 0) {
+        console.log('User badges details:', userBadges.map(ub => ({
+          badge_id: ub.badge_id,
+          progress: ub.progress,
+          completed: ub.completed
+        })));
+      }
+      
       // Combine the data with proper type checking
       return allBadges.map(badge => {
         const userBadge = userBadges?.find(ub => ub.badge_id === badge.id);
@@ -48,6 +57,8 @@ export const useBadges = (userId: string | undefined) => {
         } as BadgeType;
       });
     },
-    enabled: !!userId
+    enabled: !!userId,
+    // Add refetchInterval to periodically check for badge updates
+    refetchInterval: 30000, // Check every 30 seconds
   });
 };

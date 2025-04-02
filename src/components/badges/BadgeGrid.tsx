@@ -1,5 +1,7 @@
 
 import { BadgeX } from 'lucide-react';
+import { useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import BadgeCard, { BadgeType } from '../BadgeCard';
 
 interface BadgeGridProps {
@@ -8,6 +10,28 @@ interface BadgeGridProps {
 }
 
 const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
+  const { toast } = useToast();
+  
+  // Check for newly completed badges and show toast notifications
+  useEffect(() => {
+    const newlyCompletedBadges = badges.filter(badge => 
+      badge.completed && 
+      badge.progress >= badge.required_count && 
+      // We need this condition to avoid showing toasts for badges that were already completed
+      badge.progress === badge.required_count
+    );
+    
+    if (newlyCompletedBadges.length > 0) {
+      newlyCompletedBadges.forEach(badge => {
+        toast({
+          title: '축하합니다! 🎉',
+          description: `"${badge.name}" 배지를 획득했습니다!`,
+          duration: 5000,
+        });
+      });
+    }
+  }, [badges, toast]);
+  
   if (isLoading) {
     return (
       <div className="text-center py-12">
