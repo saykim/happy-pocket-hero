@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { PiggyBank, Target, ListTodo, ChevronsRight, TrendingUp, HandCoins } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -8,6 +9,19 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
+import { 
+  LineChart, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  Line, 
+  ResponsiveContainer, 
+  CartesianGrid,
+  Legend
+} from 'recharts';
+import { ChartContainer, ChartTooltipContent } from '@/components/ui/chart';
+import { format, parseISO, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { ko } from 'date-fns/locale';
 
 type DashboardStat = {
   id: string;
@@ -28,6 +42,13 @@ type Transaction = {
   description: string | null;
   date: string;
   created_at: string;
+};
+
+type DailyTransactionData = {
+  date: string;
+  income: number;
+  expense: number;
+  balance: number;
 };
 
 const Dashboard = () => {
@@ -83,12 +104,18 @@ const Dashboard = () => {
     queryFn: async () => {
       if (!currentUser?.id) return [];
       
+      // Get transactions for the current month
+      const currentDate = new Date();
+      const firstDayOfMonth = startOfMonth(currentDate);
+      const lastDayOfMonth = endOfMonth(currentDate);
+      
       const { data, error } = await supabase
         .from('transactions')
         .select('*')
         .eq('user_id', currentUser.id)
-        .order('date', { ascending: false })
-        .limit(10);
+        .gte('date', firstDayOfMonth.toISOString().split('T')[0])
+        .lte('date', lastDayOfMonth.toISOString().split('T')[0])
+        .order('date', { ascending: true });
       
       if (error) {
         console.error('Error fetching transactions:', error);
@@ -158,6 +185,67 @@ const Dashboard = () => {
         return balance - transaction.amount;
       }
     }, 0);
+  };
+
+  // Process transactions data for the chart
+  const getProcessedTransactionData = (): DailyTransactionData[] => {
+    if (!transactions || transactions.length === 0) {
+      // Generate placeholder data for the last 14 days if no data
+      const placeholderData: DailyTransactionData[] = [];
+      const today = new Date();
+      
+      for (let i = 13; i >= 0; i--) {
+        const date = subDays(today, i);
+        placeholderData.push({
+          date: date.toISOString().split('T')[0],
+          income: 0,
+          expense: 0,
+          balance: 0
+        });
+      }
+      
+      return placeholderData;
+    }
+
+    // Group transactions by date
+    const groupedByDate = transactions.reduce((acc: Record<string, DailyTransactionData>, transaction) => {
+      const date = transaction.date;
+      
+      if (!acc[date]) {
+        acc[date] = {
+          date,
+          income: 0,
+          expense: 0,
+          balance: 0
+        };
+      }
+      
+      if (transaction.type === 'income') {
+        acc[date].income += transaction.amount;
+      } else {
+        acc[date].expense += transaction.amount;
+      }
+      
+      return acc;
+    }, {});
+    
+    // Fill in missing dates and calculate running balance
+    const sortedDates = Object.keys(groupedByDate).sort();
+    let runningBalance = 0;
+    
+    if (sortedDates.length > 0) {
+      // Calculate running balance for each day
+      for (const date of sortedDates) {
+        const dayData = groupedByDate[date];
+        runningBalance += dayData.income - dayData.expense;
+        dayData.balance = runningBalance;
+      }
+    }
+    
+    // Convert to array and sort by date
+    return Object.values(groupedByDate).sort((a, b) => 
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
   };
 
   // Update stats when data loads
@@ -231,6 +319,32 @@ const Dashboard = () => {
     setGreeting(newGreeting);
   }, []);
 
+  // Generate chart data
+  const chartData = getProcessedTransactionData();
+  const chartConfig = {
+    income: {
+      label: "수입",
+      theme: {
+        light: "#4ade80",
+        dark: "#4ade80",
+      },
+    },
+    expense: {
+      label: "지출",
+      theme: {
+        light: "#f87171",
+        dark: "#f87171",
+      },
+    },
+    balance: {
+      label: "잔액",
+      theme: {
+        light: "#60a5fa",
+        dark: "#60a5fa",
+      },
+    },
+  };
+
   return (
     <div className="space-y-8 animate-slide-up">
       {/* Header with greeting */}
@@ -286,27 +400,99 @@ const Dashboard = () => {
         ))}
       </div>
 
-      {/* Quick Actions */}
+      {/* Transaction Usage Graph */}
       <div className="candy-card p-5">
-        <h2 className="text-lg font-bold mb-4 dark:text-white">빠른 메뉴</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { title: '용돈', icon: HandCoins, color: 'bg-blue-500', link: '/allowance' },
-            { title: '목표', icon: Target, color: 'bg-purple-500', link: '/goals' },
-            { title: '할일', icon: ListTodo, color: 'bg-amber-500', link: '/tasks' },
-          ].map((action) => (
-            <Link
-              key={action.title}
-              to={action.link}
-              className="flex flex-col items-center justify-center p-4 rounded-xl bg-gray-50 
-              hover:bg-gray-100 transition-all hover:scale-105 dark:bg-gray-800 dark:hover:bg-gray-700"
-            >
-              <div className={`p-3 rounded-full ${action.color} mb-2`}>
-                <action.icon className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-sm font-medium dark:text-gray-200">{action.title}</span>
-            </Link>
-          ))}
+        <h2 className="text-lg font-bold mb-4 dark:text-white">이번 달 용돈 사용 추이</h2>
+        <div className="h-72">
+          {isLoadingTransactions ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 dark:border-blue-400"></div>
+            </div>
+          ) : (
+            <ChartContainer config={chartConfig} className="px-2">
+              <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.3} vertical={false} />
+                <XAxis 
+                  dataKey="date" 
+                  tickLine={false} 
+                  tickMargin={10}
+                  tickFormatter={(value) => format(parseISO(value), 'dd일', { locale: ko })}
+                  stroke="#9ca3af"
+                  fontSize={12}
+                />
+                <YAxis 
+                  tickLine={false} 
+                  tickMargin={10} 
+                  axisLine={false}
+                  tickFormatter={(value) => `${Math.round(value / 1000)}k`}
+                  stroke="#9ca3af"
+                  fontSize={12}
+                />
+                <Tooltip 
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return (
+                        <ChartTooltipContent 
+                          active={active} 
+                          payload={payload} 
+                          labelFormatter={(value) => {
+                            if (typeof value === 'string') {
+                              return format(parseISO(value), 'M월 d일', { locale: ko });
+                            }
+                            return value;
+                          }}
+                        />
+                      );
+                    }
+                    return null;
+                  }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="income" 
+                  name="income"
+                  stroke="var(--color-income)"
+                  strokeWidth={2}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="expense" 
+                  name="expense"
+                  stroke="var(--color-expense)"
+                  strokeWidth={2}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="balance" 
+                  name="balance"
+                  stroke="var(--color-balance)"
+                  strokeWidth={2.5}
+                  dot={{ r: 4, strokeWidth: 2 }}
+                  activeDot={{ r: 6, strokeWidth: 2 }}
+                />
+                <Legend 
+                  verticalAlign="top" 
+                  align="right"
+                  wrapperStyle={{
+                    fontSize: '12px',
+                    paddingBottom: '10px'
+                  }}
+                  formatter={(value) => {
+                    const valueMap: Record<string, string> = {
+                      income: '수입',
+                      expense: '지출',
+                      balance: '잔액'
+                    };
+                    return valueMap[value] || value;
+                  }}
+                />
+              </LineChart>
+            </ChartContainer>
+          )}
         </div>
       </div>
 
