@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ListTodo, ChevronDown, ChevronUp, Calendar, RepeatIcon, ClockIcon, FilterIcon } from 'lucide-react';
 import { updateUserBadgeProgress } from '@/lib/utils';
@@ -154,6 +155,7 @@ const TaskList = () => {
       if (result.completed) {
         try {
           console.log("🏆 할일 완료 감지! 배지 업데이트 중...");
+          // Update task badge progress for every task completion
           const tasksResult = await updateUserBadgeProgress(currentUser.id, 'tasks');
           console.log("할일 배지 업데이트 결과:", tasksResult);
           
@@ -162,15 +164,24 @@ const TaskList = () => {
                                  activeTab === 'one-time' ? oneTimeTasks : 
                                  tasks;
           
-          const allTasksCompleted = currentViewTasks.every(t => t.id === result.taskId ? true : t.completed);
+          // Get count of all completed tasks in current view
+          const completedTasksCount = currentViewTasks.filter(t => 
+            t.id === result.taskId ? true : t.completed
+          ).length;
           
-          if (allTasksCompleted && currentViewTasks.length > 0) {
+          console.log(`완료된 작업 수: ${completedTasksCount}/${currentViewTasks.length}`);
+          
+          // Check if all tasks in current view are completed
+          const allTasksCompleted = completedTasksCount === currentViewTasks.length && currentViewTasks.length > 0;
+          
+          if (allTasksCompleted) {
             console.log("🎯 모든 할일 완료! 추가 배지 업데이트 중...");
-            // 추가 배지 부여 (모든 할일 완료)
-            const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity', 3);
+            // Award activity badges when all tasks are completed
+            // Passing the total number of completed tasks to count each completion as an individual activity
+            const activityResult = await updateUserBadgeProgress(currentUser.id, 'activity', totalCompletedTasks);
             console.log("활동 배지 업데이트 결과:", activityResult);
             
-            // 특별 토스트 메시지 표시
+            // Special toast message
             toast({
               title: '축하합니다!',
               description: '모든 할일을 완료했습니다. 배지를 확인해보세요!',
@@ -239,6 +250,34 @@ const TaskList = () => {
       });
     }
   });
+
+  // Check for all completed tasks on initial load or when tasks change
+  useEffect(() => {
+    const checkAllCompleted = async () => {
+      if (!currentUser || tasks.length === 0) return;
+      
+      // Only proceed if all tasks are completed
+      const allCompleted = tasks.length > 0 && tasks.every(task => task.completed);
+      
+      if (allCompleted) {
+        console.log("🔍 모든 할일이 이미 완료됨! 배지 확인 중...");
+        try {
+          // Update badge progress for each category
+          await updateUserBadgeProgress(currentUser.id, 'tasks', tasks.length);
+          await updateUserBadgeProgress(currentUser.id, 'activity', tasks.length);
+          
+          console.log(`총 ${tasks.length}개의 할일 완료에 대한 배지 업데이트 완료`);
+          
+          // Refresh badges data
+          await queryClient.invalidateQueries({ queryKey: ['badges', currentUser.id] });
+        } catch (error) {
+          console.error('배지 업데이트 중 오류:', error);
+        }
+      }
+    };
+    
+    checkAllCompleted();
+  }, [currentUser, tasks, queryClient]);
 
   const handleAddTask = (title: string, recurrence: string) => {
     if (!title.trim() || !currentUser) return;
