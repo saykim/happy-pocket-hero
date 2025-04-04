@@ -15,7 +15,7 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
   
   // Check for newly completed badges and show toast notifications
   useEffect(() => {
-    if (badges.length === 0) {
+    if (!badges || badges.length === 0) {
       return;
     }
     
@@ -32,12 +32,19 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
       const prevBadge = previousBadges.find(pb => pb.id === badge.id);
       
       // Check if it's now completed but wasn't before
-      return badge.completed && prevBadge && !prevBadge.completed;
+      const isNewlyCompleted = badge.completed && prevBadge && !prevBadge.completed;
+      
+      if (isNewlyCompleted) {
+        console.log(`새로 획득한 배지 감지: ${badge.name}`);
+      }
+      
+      return isNewlyCompleted;
     });
     
     if (newlyCompletedBadges.length > 0) {
-      console.log('새로 획득한 배지:', newlyCompletedBadges.map(b => b.name));
+      console.log('새로 획득한 배지:', newlyCompletedBadges.map(b => b.name).join(', '));
       
+      // Show a toast notification for each newly completed badge
       newlyCompletedBadges.forEach(badge => {
         toast({
           title: '축하합니다! 🎉',
@@ -45,7 +52,18 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
           duration: 5000,
         });
       });
+    } else {
+      // Log that no new badges were detected
+      console.log('새로운 완료 배지가 감지되지 않았습니다.');
     }
+    
+    // Debug: Log current badge progress for all badges
+    console.log('현재 배지 상태:', badges.map(b => ({
+      name: b.name, 
+      progress: b.progress, 
+      required: b.required_count,
+      completed: b.completed
+    })));
     
     // Update previous badges for next comparison
     setPreviousBadges(badges);
@@ -60,7 +78,7 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
     );
   }
   
-  if (badges.length === 0) {
+  if (!badges || badges.length === 0) {
     return (
       <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
         <BadgeX size={48} className="mx-auto mb-3 text-gray-400" />
