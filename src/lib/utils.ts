@@ -44,17 +44,9 @@ export async function updateUserBadgeProgress(
       return { success: true, message: '해당 카테고리의 배지가 없습니다.' };
     }
 
-    // Sign in as the user anonymously to create badges
-    // This is necessary because RLS policies require authentication
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: `${userId}@example.com`,
-      password: 'password123',
-    });
-
-    if (signInError) {
-      console.log(`인증 오류, 부모 모드로 작업 계속: ${signInError.message}`);
-      // Continue without authentication - used when parent is managing child's account
-    }
+    // RLS가 활성화된 경우에는 인증이 필요하나, 현재 시스템에서는 커스텀 인증을 사용 중
+    // RLS를 우회하기 위해 서비스 롤을 사용하려 했으나 클라이언트에서는 불가능
+    // 따라서 일반 클라이언트로 직접 요청 수행
 
     // 2. 각 배지에 대해 사용자 진행 상황 업데이트
     const updateResults = [];
@@ -84,33 +76,16 @@ export async function updateUserBadgeProgress(
           
           console.log(`새 배지 생성: 진행도=${newProgress}, 완료=${completed ? '예' : '아니오'}`);
           
-          // Use the service_role key to bypass RLS for parent-managed accounts
-          const serviceClient = supabase.auth.admin;
-          let insertOperation;
-          
-          if (serviceClient) {
-            insertOperation = serviceClient.insertUserBadge({
+          const { data: insertData, error: insertError } = await supabase
+            .from('user_badges')
+            .insert({
               user_id: userId,
               badge_id: badge.id,
               progress: newProgress,
               completed: completed,
               earned_at: completed ? new Date().toISOString() : null
-            });
-          } else {
-            // Fallback to regular client if admin not available
-            insertOperation = supabase
-              .from('user_badges')
-              .insert({
-                user_id: userId,
-                badge_id: badge.id,
-                progress: newProgress,
-                completed: completed,
-                earned_at: completed ? new Date().toISOString() : null
-              })
-              .select();
-          }
-          
-          const { data: insertData, error: insertError } = await insertOperation;
+            })
+            .select();
           
           if (insertError) {
             console.error('배지 생성 중 오류:', insertError);
@@ -182,9 +157,6 @@ export async function updateUserBadgeProgress(
         });
       }
     }
-
-    // Sign out after operations are complete
-    await supabase.auth.signOut();
 
     return { success: true, results: updateResults };
   } catch (error) {
