@@ -44,10 +44,6 @@ export async function updateUserBadgeProgress(
       return { success: true, message: '해당 카테고리의 배지가 없습니다.' };
     }
 
-    // RLS가 활성화된 경우에는 인증이 필요하나, 현재 시스템에서는 커스텀 인증을 사용 중
-    // RLS를 우회하기 위해 서비스 롤을 사용하려 했으나 클라이언트에서는 불가능
-    // 따라서 일반 클라이언트로 직접 요청 수행
-
     // 2. 각 배지에 대해 사용자 진행 상황 업데이트
     const updateResults = [];
     for (const badge of badges) {
@@ -58,7 +54,7 @@ export async function updateUserBadgeProgress(
         const { data: userBadge, error: userBadgeError } = await supabase
           .from('user_badges')
           .select('*')
-          .eq('user_id', userId)
+          .eq('user_id', userId) // UUID type is handled by Supabase client
           .eq('badge_id', badge.id)
           .maybeSingle();
         
@@ -79,7 +75,7 @@ export async function updateUserBadgeProgress(
           const { data: insertData, error: insertError } = await supabase
             .from('user_badges')
             .insert({
-              user_id: userId,
+              user_id: userId, // UUID conversion is handled by Supabase
               badge_id: badge.id,
               progress: newProgress,
               completed: completed,
