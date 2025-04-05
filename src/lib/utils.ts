@@ -75,7 +75,7 @@ export async function updateUserBadgeProgress(
           const { data: insertData, error: insertError } = await supabase
             .from('user_badges')
             .insert({
-              user_id: userId,
+              user_id: userId, // User ID as string
               badge_id: badge.id,
               progress: newProgress,
               completed: completed,
