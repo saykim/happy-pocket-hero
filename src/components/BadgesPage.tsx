@@ -8,6 +8,7 @@ import BadgeHeader from './badges/BadgeHeader';
 import BadgeGrid from './badges/BadgeGrid';
 import BadgeExplanation from './badges/BadgeExplanation';
 import { supabase } from '@/integrations/supabase/client';
+import MascotGuide from './MascotGuide';
 
 const BadgesPage = () => {
   const { currentUser } = useUser();
@@ -93,8 +94,40 @@ const BadgesPage = () => {
   const completedCount = badges.filter(badge => badge.completed).length;
   const totalCount = badges.length;
   
+  // 배지 획득율에 따른 마스코트 상태 결정
+  const getMascotState = () => {
+    const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+    
+    if (completionRate >= 75) return 'happy';
+    if (completionRate <= 25) return 'hungry';
+    if (completionRate === 100) return 'sleeping';
+    return 'normal';
+  };
+
+  // 배지 획득에 따른 메시지 생성
+  const getMascotMessage = () => {
+    if (totalCount === 0) return '배지를 모아보세요!';
+    
+    const completionRate = (completedCount / totalCount) * 100;
+    
+    if (completionRate === 100) return '축하해요! 모든 배지를 획득했어요!';
+    if (completionRate >= 75) return '거의 다 모았어요! 조금만 더 화이팅!';
+    if (completionRate >= 50) return '절반 이상 모았네요! 잘 하고 있어요!';
+    if (completionRate >= 25) return '배지 수집이 시작됐어요! 계속 도전해보세요!';
+    return '새로운 배지에 도전해보세요!';
+  };
+  
   return (
     <div className="space-y-6 animate-slide-up">
+      {/* 마스코트 가이드 */}
+      <div className="flex justify-center mb-4">
+        <MascotGuide 
+          taskCompletion={totalCount > 0 ? (completedCount / totalCount) * 100 : 50}
+          state={getMascotState()}
+          message={getMascotMessage()}
+        />
+      </div>
+      
       {/* Header */}
       <BadgeHeader 
         completedCount={completedCount} 
