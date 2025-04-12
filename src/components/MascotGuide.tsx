@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Heart, Star, CarrotIcon, ZzzIcon } from "lucide-react";
+import { Heart, Star, CarrotIcon, Zap } from "lucide-react";
 
 type MascotState = 'normal' | 'happy' | 'sleeping' | 'hungry';
 
