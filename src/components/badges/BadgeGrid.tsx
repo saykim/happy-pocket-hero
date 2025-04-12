@@ -1,8 +1,8 @@
+
 import { BadgeX } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import BadgeCard, { BadgeType } from '../BadgeCard';
-import MascotGuide from '../MascotGuide';
 
 interface BadgeGridProps {
   badges: BadgeType[];
@@ -12,7 +12,6 @@ interface BadgeGridProps {
 const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
   const { toast } = useToast();
   const [previousBadges, setPreviousBadges] = useState<BadgeType[]>([]);
-  const [newBadgeEarned, setNewBadgeEarned] = useState<BadgeType | null>(null);
   
   // Check for newly completed badges and show toast notifications
   useEffect(() => {
@@ -70,26 +69,6 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
     setPreviousBadges(badges);
   }, [badges, toast]);
   
-  // 새로 획득한 배지 감지
-  useEffect(() => {
-    const newlyCompletedBadges = badges.filter(badge => {
-      const prevBadge = previousBadges.find(pb => pb.id === badge.id);
-      return badge.completed && prevBadge && !prevBadge.completed;
-    });
-    
-    // 새로 획득한 배지가 있으면 상태 업데이트
-    if (newlyCompletedBadges.length > 0) {
-      setNewBadgeEarned(newlyCompletedBadges[0]);
-      
-      // 5초 후에 애니메이션 종료
-      setTimeout(() => {
-        setNewBadgeEarned(null);
-      }, 5000);
-    }
-    
-    setPreviousBadges(badges);
-  }, [badges, toast, previousBadges]);
-  
   if (isLoading) {
     return (
       <div className="text-center py-12">
@@ -109,24 +88,10 @@ const BadgeGrid = ({ badges, isLoading }: BadgeGridProps) => {
   }
   
   return (
-    <div className="relative">
-      {/* 새 배지 획득시 축하 애니메이션 */}
-      {newBadgeEarned && (
-        <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-20 z-10">
-          <div className="text-center">
-            <MascotGuide 
-              state="happy" 
-              message={`"${newBadgeEarned.name}" 배지를 획득했어요!`} 
-            />
-          </div>
-        </div>
-      )}
-      
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {badges.map(badge => (
-          <BadgeCard key={badge.id} badge={badge} />
-        ))}
-      </div>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {badges.map(badge => (
+        <BadgeCard key={badge.id} badge={badge} />
+      ))}
     </div>
   );
 };
