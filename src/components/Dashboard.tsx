@@ -8,6 +8,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
+import { useTasks } from '@/hooks/useTasks';
+import { useBadges } from '@/hooks/useBadges';
 
 type DashboardStat = {
   id: string;
@@ -34,51 +36,17 @@ const Dashboard = () => {
   const [greeting, setGreeting] = useState('안녕하세요!');
   const { currentUser } = useUser();
   const { toast } = useToast();
-  const [stats, setStats] = useState<DashboardStat[]>([
-    {
-      id: 'balance',
-      title: '현재 잔액',
-      value: 0,
-      change: 0,
-      icon: HandCoins,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-blue-100',
-      suffix: '원',
-    },
-    {
-      id: 'savings',
-      title: '저축액',
-      value: 0,
-      change: 0,
-      icon: PiggyBank,
-      iconColor: 'text-purple-600',
-      bgColor: 'bg-purple-100',
-      suffix: '원',
-    },
-    {
-      id: 'tasks',
-      title: '미완료 할일',
-      value: 0,
-      change: 0,
-      icon: ListTodo,
-      iconColor: 'text-amber-600',
-      bgColor: 'bg-amber-100',
-      suffix: '개',
-    },
-    {
-      id: 'points',
-      title: '포인트',
-      value: 0,
-      change: 0,
-      icon: Target,
-      iconColor: 'text-pink-600',
-      bgColor: 'bg-pink-100',
-      suffix: '점',
-    },
-  ]);
+  
+  // Fetch tasks data
+  const { tasks } = useTasks(currentUser?.id);
+  const incompleteTasks = tasks?.filter(task => !task.completed).length || 0;
 
-  // Fetch transactions data
-  const { data: transactions, isLoading: isLoadingTransactions } = useQuery({
+  // Fetch badges data for points
+  const { data: badges } = useBadges(currentUser?.id);
+  const totalPoints = badges?.filter(badge => badge.completed).length * 100 || 0;
+
+  // Fetch transactions for balance
+  const { data: transactions } = useQuery({
     queryKey: ['transactions', currentUser?.id],
     queryFn: async () => {
       if (!currentUser?.id) return [];
@@ -87,8 +55,7 @@ const Dashboard = () => {
         .from('transactions')
         .select('*')
         .eq('user_id', currentUser.id)
-        .order('date', { ascending: false })
-        .limit(10);
+        .order('date', { ascending: false });
       
       if (error) {
         console.error('Error fetching transactions:', error);
@@ -105,51 +72,28 @@ const Dashboard = () => {
     enabled: !!currentUser?.id,
   });
 
-  // Fetch tasks data
-  const { data: tasksCount } = useQuery({
-    queryKey: ['tasksCount', currentUser?.id],
+  // Fetch goals for savings amount
+  const { data: goals } = useQuery({
+    queryKey: ['goals', currentUser?.id],
     queryFn: async () => {
-      if (!currentUser?.id) return 0;
-      
-      const { count, error } = await supabase
-        .from('tasks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', currentUser.id)
-        .eq('status', 'todo');
-      
-      if (error) {
-        console.error('Error fetching tasks count:', error);
-        return 0;
-      }
-      
-      return count || 0;
-    },
-    enabled: !!currentUser?.id,
-  });
-
-  // Fetch goals data for savings
-  const { data: goalsSavings } = useQuery({
-    queryKey: ['goalsSavings', currentUser?.id],
-    queryFn: async () => {
-      if (!currentUser?.id) return 0;
+      if (!currentUser?.id) return [];
       
       const { data, error } = await supabase
         .from('goals')
-        .select('current_amount')
+        .select('*')
         .eq('user_id', currentUser.id);
       
       if (error) {
-        console.error('Error fetching goals savings:', error);
-        return 0;
+        console.error('Error fetching goals:', error);
+        return [];
       }
       
-      // Sum up all current_amount values
-      return data.reduce((sum, goal) => sum + goal.current_amount, 0);
+      return data;
     },
     enabled: !!currentUser?.id,
   });
 
-  // Calculate balance from transactions
+  // Calculate current balance from transactions
   const calculateBalance = (transactions: Transaction[] = []) => {
     return transactions.reduce((balance, transaction) => {
       if (transaction.type === 'income') {
@@ -160,58 +104,56 @@ const Dashboard = () => {
     }, 0);
   };
 
-  // Update stats when data loads
-  useEffect(() => {
-    if (currentUser?.id) {
-      const balance = calculateBalance(transactions);
-      const savings = goalsSavings || 0;
-      const incompleteTasks = tasksCount || 0;
-      const points = 0; // TODO: Implement points from badges or achievements
-      
-      setStats([
-        {
-          id: 'balance',
-          title: '현재 잔액',
-          value: balance,
-          change: 0, // Calculate change percentage if historical data available
-          icon: HandCoins,
-          iconColor: 'text-blue-600',
-          bgColor: 'bg-blue-100',
-          suffix: '원',
-        },
-        {
-          id: 'savings',
-          title: '저축액',
-          value: savings,
-          change: 0, // Calculate change percentage if historical data available
-          icon: PiggyBank,
-          iconColor: 'text-purple-600',
-          bgColor: 'bg-purple-100',
-          suffix: '원',
-        },
-        {
-          id: 'tasks',
-          title: '미완료 할일',
-          value: incompleteTasks,
-          change: 0, // Calculate change percentage if historical data available
-          icon: ListTodo,
-          iconColor: 'text-amber-600',
-          bgColor: 'bg-amber-100',
-          suffix: '개',
-        },
-        {
-          id: 'points',
-          title: '포인트',
-          value: points,
-          change: 0, // Calculate change percentage if historical data available
-          icon: Target,
-          iconColor: 'text-pink-600',
-          bgColor: 'bg-pink-100',
-          suffix: '점',
-        },
-      ]);
-    }
-  }, [currentUser?.id, transactions, tasksCount, goalsSavings]);
+  // Calculate total savings from goals
+  const calculateTotalSavings = (goals: any[] = []) => {
+    return goals.reduce((total, goal) => total + (goal.current_amount || 0), 0);
+  };
+
+  const balance = calculateBalance(transactions);
+  const totalSavings = calculateTotalSavings(goals);
+
+  const stats = [
+    {
+      id: 'balance',
+      title: '현재 잔액',
+      value: balance,
+      change: 0,
+      icon: HandCoins,
+      iconColor: 'text-blue-600',
+      bgColor: 'bg-blue-100',
+      suffix: '원',
+    },
+    {
+      id: 'savings',
+      title: '저축액',
+      value: totalSavings,
+      change: 0,
+      icon: PiggyBank,
+      iconColor: 'text-purple-600',
+      bgColor: 'bg-purple-100',
+      suffix: '원',
+    },
+    {
+      id: 'tasks',
+      title: '미완료 할일',
+      value: incompleteTasks,
+      change: 0,
+      icon: ListTodo,
+      iconColor: 'text-amber-600',
+      bgColor: 'bg-amber-100',
+      suffix: '개',
+    },
+    {
+      id: 'points',
+      title: '포인트',
+      value: totalPoints,
+      change: 0,
+      icon: Target,
+      iconColor: 'text-pink-600',
+      bgColor: 'bg-pink-100',
+      suffix: '점',
+    },
+  ];
 
   // Update greeting based on time of day
   useEffect(() => {
@@ -323,7 +265,7 @@ const Dashboard = () => {
         </div>
 
         <div className="space-y-3">
-          {isLoadingTransactions ? (
+          {transactions === undefined ? (
             <div className="py-6 text-center">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto mb-2 dark:border-blue-400"></div>
               <p className="text-sm text-gray-500 dark:text-gray-300">데이터 로딩 중...</p>
