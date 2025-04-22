@@ -276,6 +276,14 @@ const GoalTracker = () => {
     setShowEditForm(goal.id);
   };
 
+  // Helper function to safely format numbers
+  const safeFormat = (value: number | undefined | null) => {
+    if (value === undefined || value === null) {
+      return '0';
+    }
+    return value.toLocaleString();
+  };
+
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Header */}
@@ -671,12 +679,12 @@ const GoalTracker = () => {
                         className="text-blue-600 font-semibold"
                       />
                     </span>
-                    <span className="text-gray-500">{goal.targetAmount.toLocaleString()}원</span>
+                    <span className="text-gray-500">{safeFormat(goal.targetAmount)}원</span>
                   </div>
                   <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                     <div 
                       className="h-full rounded-full transition-all duration-1000 bg-gradient-to-r from-blue-400 to-purple-500"
-                      style={{ width: `${Math.min(100, (goal.currentAmount / goal.targetAmount) * 100)}%` }}
+                      style={{ width: `${Math.min(100, ((goal.currentAmount || 0) / (goal.targetAmount || 1)) * 100)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -742,7 +750,7 @@ const GoalTracker = () => {
                               className="text-green-600 font-semibold"
                             />
                           </span>
-                          <span className="text-gray-500">{goal.targetAmount.toLocaleString()}원</span>
+                          <span className="text-gray-500">{safeFormat(goal.targetAmount)}원</span>
                         </div>
                         <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
                           <div 
