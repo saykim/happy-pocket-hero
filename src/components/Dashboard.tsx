@@ -9,7 +9,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useUser } from '@/context/UserContext';
 import { useToast } from '@/hooks/use-toast';
 import { useTasks } from '@/hooks/useTasks';
-import { useBadges } from '@/hooks/useBadges';
 
 type DashboardStat = {
   id: string;
@@ -40,10 +39,6 @@ const Dashboard = () => {
   // Fetch tasks data
   const { tasks } = useTasks(currentUser?.id);
   const incompleteTasks = tasks?.filter(task => !task.completed).length || 0;
-
-  // Fetch badges data for points
-  const { data: badges } = useBadges(currentUser?.id);
-  const totalPoints = badges?.filter(badge => badge.completed).length * 100 || 0;
 
   // Fetch transactions for balance
   const { data: transactions } = useQuery({
@@ -143,16 +138,6 @@ const Dashboard = () => {
       bgColor: 'bg-amber-100',
       suffix: '개',
     },
-    {
-      id: 'points',
-      title: '포인트',
-      value: totalPoints,
-      change: 0,
-      icon: Target,
-      iconColor: 'text-pink-600',
-      bgColor: 'bg-pink-100',
-      suffix: '점',
-    },
   ];
 
   // Update greeting based on time of day
@@ -188,7 +173,7 @@ const Dashboard = () => {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-3 gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.id} className="candy-card p-4 flex flex-col">
             <div className="flex justify-between items-start">
