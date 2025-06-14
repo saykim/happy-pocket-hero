@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +15,7 @@ import Navbar from "./components/Navbar";
 import { UserProvider } from "./context/UserContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { useUser } from "./context/UserContext";
+import AnalyticsPage from "./components/analytics/AnalyticsPage";
 
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -85,6 +85,18 @@ const BadgesPageRoute = () => (
   </ProtectedRoute>
 );
 
+// Add the Analytics page component
+const AnalyticsPageRoute = () => (
+  <ProtectedRoute>
+    <div className="min-h-screen pb-24 md:pb-0 md:pt-20">
+      <Navbar />
+      <div className="container max-w-4xl px-4 py-8">
+        <AnalyticsPage />
+      </div>
+    </div>
+  </ProtectedRoute>
+);
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -102,6 +114,7 @@ const App = () => (
               <Route path="/allowance" element={<AllowancePage />} />
               <Route path="/goals" element={<GoalsPage />} />
               <Route path="/tasks" element={<TasksPage />} />
+              <Route path="/analytics" element={<AnalyticsPageRoute />} />
               <Route path="/badges" element={<BadgesPageRoute />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

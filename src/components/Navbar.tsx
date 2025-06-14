@@ -24,7 +24,7 @@ const Navbar = () => {
     { id: "allowance", label: "용돈", icon: PiggyBank },
     { id: "goals", label: "목표", icon: Target },
     { id: "tasks", label: "할일", icon: ListTodo },
-    { id: "badges", label: "배지", icon: Award },
+    { id: "analytics", label: "통계", icon: Award },
   ];
 
   return (
