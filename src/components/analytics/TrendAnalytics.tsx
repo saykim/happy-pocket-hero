@@ -112,6 +112,14 @@ const TrendAnalytics = () => {
     });
   }, [trendData]);
 
+  // Net income data with colors
+  const netIncomeData = useMemo(() => {
+    return trendData.map(item => ({
+      ...item,
+      fill: item.net >= 0 ? '#10B981' : '#EF4444'
+    }));
+  }, [trendData]);
+
   return (
     <div className="space-y-6 animate-slide-up">
       {/* Header */}
@@ -236,14 +244,14 @@ const TrendAnalytics = () => {
           <h3 className="text-lg font-semibold mb-4 dark:text-white">순수익 변화</h3>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={trendData}>
+              <BarChart data={netIncomeData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="date" />
                 <YAxis />
                 <Tooltip formatter={(value) => `${value.toLocaleString()}원`} />
                 <Bar 
                   dataKey="net" 
-                  fill={(entry) => entry >= 0 ? '#10B981' : '#EF4444'}
+                  fill="#10B981"
                   radius={[4, 4, 0, 0]}
                 />
               </BarChart>
