@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { PiggyBank, Target, ListTodo, ChevronsRight, TrendingUp, HandCoins } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -114,8 +115,8 @@ const Dashboard = () => {
       value: balance,
       change: 0,
       icon: HandCoins,
-      iconColor: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-500',
+      bgColor: 'bg-blue-50',
       suffix: '원',
     },
     {
@@ -124,8 +125,8 @@ const Dashboard = () => {
       value: totalSavings,
       change: 0,
       icon: PiggyBank,
-      iconColor: 'text-purple-600',
-      bgColor: 'bg-purple-100',
+      iconColor: 'text-purple-500',
+      bgColor: 'bg-purple-50',
       suffix: '원',
     },
     {
@@ -134,8 +135,8 @@ const Dashboard = () => {
       value: incompleteTasks,
       change: 0,
       icon: ListTodo,
-      iconColor: 'text-amber-600',
-      bgColor: 'bg-amber-100',
+      iconColor: 'text-amber-500',
+      bgColor: 'bg-amber-50',
       suffix: '개',
     },
   ];
