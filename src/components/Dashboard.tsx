@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { PiggyBank, Target, ListTodo, ChevronsRight, TrendingUp, HandCoins } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -115,8 +114,8 @@ const Dashboard = () => {
       value: balance,
       change: 0,
       icon: HandCoins,
-      iconColor: 'text-blue-500',
-      bgColor: 'bg-blue-50',
+      iconColor: 'text-white',
+      bgColor: 'bg-gradient-to-br from-blue-500 to-blue-600',
       suffix: '원',
     },
     {
@@ -125,8 +124,8 @@ const Dashboard = () => {
       value: totalSavings,
       change: 0,
       icon: PiggyBank,
-      iconColor: 'text-purple-500',
-      bgColor: 'bg-purple-50',
+      iconColor: 'text-white',
+      bgColor: 'bg-gradient-to-br from-purple-500 to-purple-600',
       suffix: '원',
     },
     {
@@ -135,8 +134,8 @@ const Dashboard = () => {
       value: incompleteTasks,
       change: 0,
       icon: ListTodo,
-      iconColor: 'text-amber-500',
-      bgColor: 'bg-amber-50',
+      iconColor: 'text-white',
+      bgColor: 'bg-gradient-to-br from-amber-500 to-amber-600',
       suffix: '개',
     },
   ];
@@ -177,10 +176,10 @@ const Dashboard = () => {
       <div className="grid grid-cols-3 gap-4 md:grid-cols-3">
         {stats.map((stat) => (
           <div key={stat.id} className="candy-card p-4 flex flex-col">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-gray-600 text-sm dark:text-gray-300">{stat.title}</p>
-                <h3 className="text-xl font-bold mt-1 dark:text-white">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex-1">
+                <p className="text-gray-600 text-sm dark:text-gray-300 mb-1">{stat.title}</p>
+                <h3 className="text-xl font-bold dark:text-white">
                   <AnimatedNumber
                     value={stat.value}
                     suffix={stat.suffix}
@@ -188,11 +187,11 @@ const Dashboard = () => {
                   />
                 </h3>
               </div>
-              <div className={cn("p-2 rounded-lg", stat.bgColor)}>
-                <stat.icon className={cn("w-5 h-5", stat.iconColor)} />
+              <div className={cn("p-3 rounded-xl shadow-lg", stat.bgColor)}>
+                <stat.icon className={cn("w-6 h-6", stat.iconColor)} />
               </div>
             </div>
-            <div className="mt-2 flex items-center text-xs">
+            <div className="flex items-center text-xs">
               <span
                 className={cn(
                   "flex items-center font-medium",
