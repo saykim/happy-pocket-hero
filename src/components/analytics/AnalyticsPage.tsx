@@ -1,6 +1,8 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ExpenseAnalytics from './ExpenseAnalytics';
+import IncomeAnalytics from './IncomeAnalytics';
+import TrendAnalytics from './TrendAnalytics';
 import { BarChart3, PieChart, TrendingUp } from 'lucide-react';
 
 const AnalyticsPage = () => {
@@ -32,17 +34,11 @@ const AnalyticsPage = () => {
         </TabsContent>
 
         <TabsContent value="income" className="mt-6">
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <TrendingUp className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>수입 분석 기능은 곧 추가될 예정입니다.</p>
-          </div>
+          <IncomeAnalytics />
         </TabsContent>
 
         <TabsContent value="trends" className="mt-6">
-          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-            <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>트렌드 분석 기능은 곧 추가될 예정입니다.</p>
-          </div>
+          <TrendAnalytics />
         </TabsContent>
       </Tabs>
     </div>
